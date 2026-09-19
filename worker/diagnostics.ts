@@ -13,6 +13,7 @@ const TOKEN_PATTERNS: readonly RegExp[] = [
   /Bearer\s+[\w.~+/=-]+/gi,
   /eyJ[\w-]+\.[\w-]+\.[\w-]+/g, // JWTs (legacy anon / service_role keys)
   /sb_(?:secret|publishable)_[\w-]+/g, // new-style Supabase API keys
+  /\bpa-[A-Za-z0-9_-]{16,}/g, // Voyage AI API keys
 ]
 
 export function redact(text: string, secrets: readonly string[] = []): string {

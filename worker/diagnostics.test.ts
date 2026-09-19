@@ -73,3 +73,17 @@ describe('redact', () => {
     expect(redact('abc abc', ['abc'])).toBe('abc abc')
   })
 })
+
+describe('Voyage key redaction', () => {
+  const VOYAGE = 'pa-FAKEKEY_abcdefghijklmnopqrstuvwxyz012345'
+
+  it('redacts a Voyage-shaped key even when it is not a configured secret', () => {
+    expect(redact(`request failed for ${VOYAGE}`)).not.toContain(VOYAGE)
+    expect(describeError(new Error(`bad key ${VOYAGE}`))).not.toContain(VOYAGE)
+  })
+
+  it('redacts it inside an error cause chain', () => {
+    const error = new Error('outer', { cause: new Error(`inner ${VOYAGE}`) })
+    expect(describeError(error)).not.toContain(VOYAGE)
+  })
+})

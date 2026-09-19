@@ -16,7 +16,8 @@
     "check": "prettier --check .",
     "worker": "tsx --env-file=.env.worker worker/index.ts",
     "worker:once": "tsx --env-file=.env.worker worker/index.ts --once",
-    "worker:drain": "tsx --env-file=.env.worker worker/index.ts --drain"
+    "worker:drain": "tsx --env-file=.env.worker worker/index.ts --drain",
+    "embedding:smoke": "tsx --env-file=.env.worker worker/embedding-smoke.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
