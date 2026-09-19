@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import { Button } from '#/components/ui/button'
 import { getSupabaseBrowserClient } from '#/lib/supabase/client'
@@ -30,6 +30,14 @@ export function GoogleButton({ redirectTo }: { redirectTo?: string }) {
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string>()
 
+  // Returning via Back/Forward can restore this page from the browser's
+  // back/forward cache with the old "pending" state frozen in place.
+  useEffect(() => {
+    const reset = () => setPending(false)
+    window.addEventListener('pageshow', reset)
+    return () => window.removeEventListener('pageshow', reset)
+  }, [])
+
   async function onClick() {
     setError(undefined)
     setPending(true)
@@ -37,12 +45,14 @@ export function GoogleButton({ redirectTo }: { redirectTo?: string }) {
     // Supabase only honours it if it's in the project's Redirect URL allow-list.
     const callback = new URL('/auth/callback', window.location.origin)
     if (redirectTo) callback.searchParams.set('next', redirectTo)
-    const { error: oauthError } =
-      await getSupabaseBrowserClient().auth.signInWithOAuth({
-        provider: 'google',
-        options: { redirectTo: callback.toString() },
-      })
-    if (oauthError) {
+    try {
+      const { error: oauthError } =
+        await getSupabaseBrowserClient().auth.signInWithOAuth({
+          provider: 'google',
+          options: { redirectTo: callback.toString() },
+        })
+      if (oauthError) throw oauthError
+    } catch {
       setError('Couldn’t start Google sign-in. Please try again.')
       setPending(false)
     }
