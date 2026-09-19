@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { AlertCircle, FileText, Info } from 'lucide-react'
 import { cn } from 'cn'
+import { formatPages, humanize } from '#/lib/format'
 import type { AskOutcome, ChatCitation } from '../types'
 import {
   ERROR_MESSAGES,
@@ -8,15 +9,8 @@ import {
   NO_EVIDENCE_MESSAGE,
 } from './messages'
 
-export function formatPages(
-  start: number | null,
-  end: number | null,
-): string | null {
-  if (start === null) return null
-  return end === null || end === start ? `p. ${start}` : `pp. ${start}–${end}`
-}
-
-const humanize = (value: string) => value.replace(/_/g, ' ')
+// Shared with the Evidence Matrix; re-exported so existing importers keep working.
+export { formatPages }
 
 /** A clickable citation chip. Shows only the evidence id, e.g. [S1]. */
 export function CitationChip({

@@ -9,6 +9,7 @@ import { Skeleton } from '#/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '#/components/ui/tabs'
 import { PageHeader } from '#/components/page-header'
 import { ChatPanel } from '#/features/chat/ui/chat-panel'
+import { EvidenceMatrixTab } from '#/features/evidence-matrix/ui/evidence-matrix-tab'
 import { DeleteProjectDialog } from '../components/delete-project-dialog'
 import { RenameProjectDialog } from '../components/rename-project-dialog'
 import { projectQuery } from '../queries'
@@ -19,11 +20,6 @@ import { WORKSPACE_TABS } from './tabs'
 import type { WorkspaceTab } from './tabs'
 
 const PLACEHOLDERS = {
-  evidence: {
-    title: 'Evidence',
-    description:
-      'Collect quotes and findings from your papers and organize them by claim.',
-  },
   comparisons: {
     title: 'Comparisons',
     description:
@@ -120,14 +116,15 @@ export function ProjectWorkspace({
       />
 
       <Tabs value={tab} onValueChange={(v) => onTabChange(v as WorkspaceTab)}>
-        {/* Mobile: a 3-column grid so every tab is visible without sideways
-            scrolling. From sm up it is the original single-row tab strip. */}
-        <TabsList className="grid h-auto! w-full grid-cols-3 sm:inline-flex sm:h-9! sm:w-fit">
+        {/* Mobile: a 3-column grid; labels may wrap inside their own pill.
+            From sm up it is a single-row strip that never squeezes its tabs: it
+            scrolls sideways (scrollbar hidden) when the row is wider than the page. */}
+        <TabsList className="grid h-auto! w-full grid-cols-3 sm:inline-flex sm:h-9! sm:w-fit sm:max-w-full sm:justify-start sm:overflow-x-auto sm:overflow-y-hidden sm:[scrollbar-width:none] sm:[&::-webkit-scrollbar]:hidden">
           {WORKSPACE_TABS.map(({ value, label, icon: Icon }) => (
             <TabsTrigger
               key={value}
               value={value}
-              className="h-auto min-w-0 flex-col gap-1 px-1 py-2 text-xs sm:h-[calc(100%-1px)] sm:flex-row sm:gap-1.5 sm:px-2 sm:py-1 sm:text-sm"
+              className="h-auto min-w-0 flex-col gap-1 px-1 py-2 text-center text-xs whitespace-normal sm:h-[calc(100%-1px)] sm:min-w-fit sm:flex-none sm:shrink-0 sm:flex-row sm:gap-1.5 sm:px-3 sm:py-1 sm:text-sm sm:whitespace-nowrap"
             >
               <Icon /> {label}
             </TabsTrigger>
@@ -142,6 +139,9 @@ export function ProjectWorkspace({
         </TabsContent>
         <TabsContent value="ai-research" className="mt-6">
           <ChatPanel key={project.id} projectId={project.id} />
+        </TabsContent>
+        <TabsContent value="evidence" className="mt-6">
+          <EvidenceMatrixTab key={project.id} projectId={project.id} />
         </TabsContent>
         {WORKSPACE_TABS.filter((t) => t.value in PLACEHOLDERS).map(
           ({ value, icon }) => (

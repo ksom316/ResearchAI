@@ -19,6 +19,18 @@ export function formatBytes(bytes: number): string {
   return `${value >= 10 || exponent === 0 ? Math.round(value) : value.toFixed(1)} ${units[exponent]}`
 }
 
+/** "p. 3" or "pp. 3–4"; null when the start page is unknown (never an invented page). */
+export function formatPages(
+  start: number | null,
+  end: number | null,
+): string | null {
+  if (start === null) return null
+  return end === null || end === start ? `p. ${start}` : `pp. ${start}–${end}`
+}
+
+/** "related_work" -> "related work". */
+export const humanize = (value: string): string => value.replace(/_/g, ' ')
+
 export function getInitials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean)
   return (
