@@ -7,7 +7,7 @@ import { QueryError } from '#/components/query-error'
 import { Input } from '#/components/ui/input'
 import { Skeleton } from '#/components/ui/skeleton'
 import { projectsQuery } from '#/features/projects/queries'
-import { papersQuery, useAssignPaper, useOpenPaper } from '../queries'
+import { papersQuery, useUnlinkPaper, useOpenPaper } from '../queries'
 import { matchesSearch } from '../search'
 import type { Paper } from '../types'
 import { AssignProjectDialog } from './assign-project-dialog'
@@ -34,10 +34,10 @@ export function PaperList({
   )
   const projects = useQuery({ ...projectsQuery(), enabled: !projectId })
   const open = useOpenPaper()
-  const assign = useAssignPaper()
+  const unlink = useUnlinkPaper()
   const [search, setSearch] = useState('')
   const [deleting, setDeleting] = useState<Paper | null>(null)
-  const [assigning, setAssigning] = useState<Paper | null>(null)
+  const [assigningId, setAssigningId] = useState<string | null>(null)
 
   if (error) return <QueryError error={error} onRetry={() => refetch()} />
 
@@ -88,17 +88,17 @@ export function PaperList({
             <PaperRow
               key={paper.id}
               paper={paper}
-              projectTitle={
+              projectTitles={
                 projectId
                   ? undefined
-                  : paper.project_id
-                    ? (titles.get(paper.project_id) ?? '…')
-                    : null
+                  : paper.project_ids.map((id) => titles.get(id) ?? '…')
               }
               onOpen={(p) => open.mutate(p)}
-              onAssign={projectId ? undefined : setAssigning}
-              onUnlink={(p) =>
-                assign.mutate({ paperId: p.id, projectId: null })
+              onAssign={projectId ? undefined : (p) => setAssigningId(p.id)}
+              onUnlink={
+                projectId
+                  ? (p) => unlink.mutate({ paperId: p.id, projectId })
+                  : undefined
               }
               onDelete={setDeleting}
             />
@@ -111,8 +111,8 @@ export function PaperList({
         onOpenChange={(o) => !o && setDeleting(null)}
       />
       <AssignProjectDialog
-        paper={assigning}
-        onOpenChange={(o) => !o && setAssigning(null)}
+        paperId={assigningId}
+        onOpenChange={(o) => !o && setAssigningId(null)}
       />
     </div>
   )

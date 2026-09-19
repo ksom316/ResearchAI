@@ -8,8 +8,9 @@ import {
   deletePaper,
   getLibraryStats,
   getPaperUrl,
+  linkPaperToProject,
   listPapers,
-  setPaperProject,
+  unlinkPaperFromProject,
   uploadPaper,
 } from './api'
 import type { Paper } from './types'
@@ -38,20 +39,31 @@ export function useUploadPaper() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: uploadPaper,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: paperKeys.all }),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: paperKeys.all }),
   })
 }
 
-export function useAssignPaper() {
+export function useLinkPaper() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (v: { paperId: string; projectId: string | null }) =>
-      setPaperProject(v.paperId, v.projectId),
-    onSuccess: async (_d, v) => {
+    mutationFn: (v: { paperId: string; projectId: string }) =>
+      linkPaperToProject(v.paperId, v.projectId),
+    onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: paperKeys.all })
-      toast.success(
-        v.projectId ? 'Paper added to project' : 'Paper removed from project',
-      )
+      toast.success('Paper added to project')
+    },
+    onError: errorToast,
+  })
+}
+
+export function useUnlinkPaper() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (v: { paperId: string; projectId: string }) =>
+      unlinkPaperFromProject(v.paperId, v.projectId),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: paperKeys.all })
+      toast.success('Paper removed from project')
     },
     onError: errorToast,
   })

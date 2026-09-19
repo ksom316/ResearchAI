@@ -13,7 +13,7 @@ import {
 import { Input } from '#/components/ui/input'
 import { Skeleton } from '#/components/ui/skeleton'
 import { projectsQuery } from '#/features/projects/queries'
-import { papersQuery, useAssignPaper } from '../queries'
+import { papersQuery, useLinkPaper } from '../queries'
 import { matchesSearch } from '../search'
 
 /** Pick existing Library papers to link to a project (no file duplication). */
@@ -28,12 +28,12 @@ export function AddFromLibraryDialog({
 }) {
   const papers = useQuery({ ...papersQuery(), enabled: open })
   const projects = useQuery({ ...projectsQuery(), enabled: open })
-  const assign = useAssignPaper()
+  const link = useLinkPaper()
   const [search, setSearch] = useState('')
 
   const projectTitles = new Map(projects.data?.map((p) => [p.id, p.title]))
   const candidates = (papers.data ?? [])
-    .filter((p) => p.project_id !== projectId)
+    .filter((p) => !p.project_ids.includes(projectId))
     .filter((p) => matchesSearch(p, search))
 
   return (
@@ -42,8 +42,8 @@ export function AddFromLibraryDialog({
         <DialogHeader>
           <DialogTitle>Add from Library</DialogTitle>
           <DialogDescription>
-            Link existing papers to this project. A paper belongs to one project
-            at a time, so adding one moves it here.
+            Link existing papers to this project. Papers can belong to several
+            projects, and the PDF isn’t duplicated.
           </DialogDescription>
         </DialogHeader>
         <Input
@@ -65,9 +65,10 @@ export function AddFromLibraryDialog({
         ) : (
           <ul className="max-h-80 divide-y overflow-y-auto">
             {candidates.map((paper) => {
-              const other = paper.project_id
-                ? projectTitles.get(paper.project_id)
-                : null
+              const others = paper.project_ids
+                .map((id) => projectTitles.get(id))
+                .filter(Boolean)
+                .join(', ')
               return (
                 <li key={paper.id} className="flex items-center gap-3 py-2">
                   <div className="min-w-0 flex-1">
@@ -75,15 +76,15 @@ export function AddFromLibraryDialog({
                       {paper.title}
                     </p>
                     <p className="truncate text-xs text-muted-foreground">
-                      {other ? `Currently in ${other}` : 'Not in a project'}
+                      {others ? `Also in ${others}` : 'Not in a project'}
                     </p>
                   </div>
                   <Button
                     size="sm"
                     variant="outline"
-                    disabled={assign.isPending}
+                    disabled={link.isPending}
                     onClick={() =>
-                      assign.mutate({ paperId: paper.id, projectId })
+                      link.mutate({ paperId: paper.id, projectId })
                     }
                   >
                     <Plus /> Add

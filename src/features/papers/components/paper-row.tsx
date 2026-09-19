@@ -27,15 +27,15 @@ const STATUS_LABEL: Record<PaperStatus, string> = {
 
 export function PaperRow({
   paper,
-  projectTitle,
+  projectTitles,
   onOpen,
   onAssign,
   onUnlink,
   onDelete,
 }: {
   paper: Paper
-  /** Shown when the row is displayed outside of its project (i.e. the Library). */
-  projectTitle?: string | null
+  /** Shown in the Library only: titles of every project the paper is linked to. */
+  projectTitles?: string[]
   onOpen: (paper: Paper) => void
   onAssign?: (paper: Paper) => void
   onUnlink?: (paper: Paper) => void
@@ -77,10 +77,26 @@ export function PaperRow({
           </p>
         )}
       </div>
-      {projectTitle !== undefined && (
-        <Badge variant="outline" className="hidden max-w-40 sm:inline-flex">
-          <span className="truncate">{projectTitle ?? 'No project'}</span>
-        </Badge>
+      {projectTitles && (
+        <div className="hidden max-w-56 shrink-0 items-center gap-1 sm:flex">
+          {projectTitles.length === 0 ? (
+            <Badge variant="outline">No project</Badge>
+          ) : (
+            <>
+              <Badge variant="outline" className="max-w-36">
+                <span className="truncate">{projectTitles[0]}</span>
+              </Badge>
+              {projectTitles.length > 1 && (
+                <Badge
+                  variant="outline"
+                  title={projectTitles.slice(1).join(', ')}
+                >
+                  +{projectTitles.length - 1}
+                </Badge>
+              )}
+            </>
+          )}
+        </div>
       )}
       <Badge variant={paper.status === 'failed' ? 'destructive' : 'secondary'}>
         {STATUS_LABEL[paper.status]}
@@ -105,10 +121,10 @@ export function PaperRow({
           {onAssign && (
             <DropdownMenuItem onSelect={() => onAssign(paper)}>
               <FolderPlus />
-              {paper.project_id ? 'Move to project…' : 'Add to project…'}
+              Manage projects…
             </DropdownMenuItem>
           )}
-          {onUnlink && paper.project_id && (
+          {onUnlink && (
             <DropdownMenuItem onSelect={() => onUnlink(paper)}>
               <FolderMinus /> Remove from project
             </DropdownMenuItem>

@@ -11,30 +11,34 @@ import {
 } from '#/components/ui/dialog'
 import { projectsQuery } from '#/features/projects/queries'
 import { cn } from '#/lib/utils'
-import { useAssignPaper } from '../queries'
-import type { Paper } from '../types'
+import { papersQuery, useLinkPaper, useUnlinkPaper } from '../queries'
 
-/** Links an existing paper to a project. Only the record changes; the PDF is not copied. */
+/**
+ * Toggle which projects a paper belongs to. A paper can be in many projects;
+ * only the link changes, never the PDF or the paper record.
+ */
 export function AssignProjectDialog({
-  paper,
+  paperId,
   onOpenChange,
 }: {
-  paper: Paper | null
+  paperId: string | null
   onOpenChange: (open: boolean) => void
 }) {
   const projects = useQuery(projectsQuery())
-  const assign = useAssignPaper()
+  const papers = useQuery(papersQuery())
+  const link = useLinkPaper()
+  const unlink = useUnlinkPaper()
+  const paper = papers.data?.find((p) => p.id === paperId)
+  const pending = link.isPending || unlink.isPending
 
   return (
-    <Dialog
-      open={paper !== null}
-      onOpenChange={(open) => !assign.isPending && onOpenChange(open)}
-    >
+    <Dialog open={paperId !== null} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Add to project</DialogTitle>
+          <DialogTitle>Projects</DialogTitle>
           <DialogDescription>
-            Choose a project for “{paper?.title}”. The PDF isn’t duplicated.
+            Choose the projects “{paper?.title}” belongs to. The PDF isn’t
+            duplicated.
           </DialogDescription>
         </DialogHeader>
 
@@ -43,7 +47,7 @@ export function AssignProjectDialog({
             error={projects.error}
             onRetry={() => projects.refetch()}
           />
-        ) : projects.isPending ? (
+        ) : projects.isPending || papers.isPending ? (
           <Skeleton className="h-24 rounded-lg" />
         ) : projects.data.length === 0 ? (
           <p className="text-sm text-muted-foreground">
@@ -52,26 +56,26 @@ export function AssignProjectDialog({
         ) : (
           <ul className="max-h-72 space-y-1 overflow-y-auto">
             {projects.data.map((project) => {
-              const current = project.id === paper?.project_id
+              const linked = paper?.project_ids.includes(project.id) ?? false
               return (
                 <li key={project.id}>
                   <button
                     type="button"
-                    disabled={assign.isPending || current}
+                    disabled={pending || !paper}
+                    aria-pressed={linked}
                     onClick={() =>
-                      paper &&
-                      assign.mutate(
-                        { paperId: paper.id, projectId: project.id },
-                        { onSuccess: () => onOpenChange(false) },
-                      )
+                      (linked ? unlink : link).mutate({
+                        paperId: paper!.id,
+                        projectId: project.id,
+                      })
                     }
                     className={cn(
                       'flex w-full items-center justify-between gap-2 rounded-md px-3 py-2 text-left text-sm hover:bg-accent disabled:opacity-60',
-                      current && 'bg-accent',
+                      linked && 'bg-accent',
                     )}
                   >
                     <span className="truncate">{project.title}</span>
-                    {current && <Check className="size-4 shrink-0" />}
+                    {linked && <Check className="size-4 shrink-0" />}
                   </button>
                 </li>
               )

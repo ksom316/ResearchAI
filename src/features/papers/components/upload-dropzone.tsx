@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import type { DragEvent } from 'react'
-import { AlertCircle, Loader2, UploadCloud } from 'lucide-react'
+import { AlertCircle, Info, Loader2, UploadCloud } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '#/components/ui/button'
 import { cn } from '#/lib/utils'
@@ -19,6 +19,7 @@ export function UploadDropzone({ projectId }: { projectId?: string }) {
   const busyRef = useRef(false)
   const [progress, setProgress] = useState<Progress | null>(null)
   const [errors, setErrors] = useState<string[]>([])
+  const [notices, setNotices] = useState<string[]>([])
   const [dragging, setDragging] = useState(false)
   const busy = progress !== null
 
@@ -28,6 +29,7 @@ export function UploadDropzone({ projectId }: { projectId?: string }) {
     if (files.length === 0) return
     busyRef.current = true
     setErrors([])
+    setNotices([])
 
     const problems: string[] = []
     const valid: File[] = []
@@ -37,6 +39,7 @@ export function UploadDropzone({ projectId }: { projectId?: string }) {
       else valid.push(file)
     }
 
+    const info: string[] = []
     let succeeded = 0
     for (const [i, file] of valid.entries()) {
       setProgress({
@@ -46,13 +49,24 @@ export function UploadDropzone({ projectId }: { projectId?: string }) {
         pct: 0,
       })
       try {
-        await upload.mutateAsync({
+        const result = await upload.mutateAsync({
           file,
           projectId: projectId ?? null,
           onProgress: (f) =>
             setProgress((p) => p && { ...p, pct: Math.round(f * 100) }),
         })
-        succeeded++
+        if (result.kind === 'created') {
+          succeeded++
+        } else {
+          const t = `“${result.paper.title}”`
+          info.push(
+            result.linkedToProject
+              ? `“${file.name}” is already in your library as ${t}, so it was added to this project without uploading it again.`
+              : result.alreadyInProject
+                ? `“${file.name}” already exists in this project as ${t}. Nothing was uploaded.`
+                : `“${file.name}” already exists in your library as ${t}. Nothing was uploaded.`,
+          )
+        }
       } catch (e) {
         problems.push(
           `“${file.name}”: ${e instanceof Error ? e.message : 'Upload failed.'}`,
@@ -62,6 +76,7 @@ export function UploadDropzone({ projectId }: { projectId?: string }) {
 
     setProgress(null)
     setErrors(problems)
+    setNotices(info)
     busyRef.current = false
     if (inputRef.current) inputRef.current.value = ''
     if (succeeded > 0) {
@@ -147,6 +162,20 @@ export function UploadDropzone({ projectId }: { projectId?: string }) {
           onChange={(e) => e.target.files && void handleFiles(e.target.files)}
         />
       </div>
+
+      {notices.length > 0 && (
+        <div
+          role="status"
+          className="flex gap-3 rounded-lg border bg-accent/40 p-4 text-sm"
+        >
+          <Info className="mt-0.5 size-5 shrink-0 text-muted-foreground" />
+          <ul className="space-y-1">
+            {notices.map((message) => (
+              <li key={message}>{message}</li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {errors.length > 0 && (
         <div
