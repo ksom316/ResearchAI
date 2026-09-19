@@ -27,7 +27,7 @@ function SettingsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <dl className="grid gap-4 text-sm sm:grid-cols-[8rem_1fr]">
+          <dl className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-[8rem_minmax(0,1fr)]">
             <dt className="text-muted-foreground">Name</dt>
             <dd className="font-medium">{user.fullName}</dd>
             <dt className="text-muted-foreground">Email</dt>

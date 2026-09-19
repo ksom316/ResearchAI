@@ -24,7 +24,7 @@ export function AppShell({
   const [mobileOpen, setMobileOpen] = useState(false)
 
   return (
-    <div className="min-h-screen lg:grid lg:grid-cols-[16rem_1fr]">
+    <div className="min-h-screen lg:grid lg:grid-cols-[16rem_minmax(0,1fr)]">
       <aside className="sticky top-0 hidden h-screen lg:block">
         <SidebarNav user={user} />
       </aside>
@@ -48,7 +48,7 @@ export function AppShell({
           </Sheet>
         </header>
 
-        <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 lg:px-10 lg:py-10">
+        <main className="mx-auto w-full max-w-6xl min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-10 lg:py-10">
           {children}
         </main>
       </div>

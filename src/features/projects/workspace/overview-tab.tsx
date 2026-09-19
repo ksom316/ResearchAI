@@ -14,14 +14,14 @@ export function OverviewTab({ project }: { project: ResearchProject }) {
   const papers = useQuery(papersQuery({ projectId: project.id }))
 
   return (
-    <div className="grid gap-4 lg:grid-cols-3">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
       <Card className="lg:col-span-2">
         <CardHeader>
           <CardTitle>Research question</CardTitle>
           <CardDescription>What this project is about.</CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="whitespace-pre-wrap text-sm">
+          <p className="text-sm break-words whitespace-pre-wrap">
             {project.description ||
               'No description yet. Use “Edit” to add one.'}
           </p>

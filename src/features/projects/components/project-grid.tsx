@@ -14,7 +14,7 @@ export function ProjectGrid() {
 
   if (isPending) {
     return (
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {Array.from({ length: 3 }, (_, i) => (
           <Skeleton key={i} className="h-44 rounded-xl" />
         ))}
@@ -34,7 +34,7 @@ export function ProjectGrid() {
   }
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
       {data.map((project) => (
         <ProjectCard key={project.id} project={project} />
       ))}

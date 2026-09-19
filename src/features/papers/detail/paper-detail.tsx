@@ -48,7 +48,7 @@ export function PaperDetail({ paperId }: { paperId: string }) {
       <>
         {back}
         <Skeleton className="mb-8 h-10 w-72 max-w-full" />
-        <div className="grid gap-6 lg:grid-cols-[1fr_20rem]">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
           <Skeleton className="h-40 rounded-xl" />
           <Skeleton className="h-56 rounded-xl" />
         </div>
@@ -114,7 +114,7 @@ function PaperDetailContent({ paper }: { paper: Paper }) {
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_20rem]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="min-w-0 space-y-6">
           <PaperStatusCard paper={paper} />
           {paper.status === 'ready' && <PaperOutline paperId={paper.id} />}

@@ -12,8 +12,8 @@ export function DashboardSection({
   children: ReactNode
 }) {
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
+    <Card className="min-w-0">
+      <CardHeader className="flex flex-row items-center justify-between gap-3">
         <CardTitle className="text-lg">{title}</CardTitle>
         <Link to={viewAllTo} className="text-sm font-medium">
           View all

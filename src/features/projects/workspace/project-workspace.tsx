@@ -124,15 +124,19 @@ export function ProjectWorkspace({
       />
 
       <Tabs value={tab} onValueChange={(v) => onTabChange(v as WorkspaceTab)}>
-        <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-          <TabsList>
-            {WORKSPACE_TABS.map(({ value, label, icon: Icon }) => (
-              <TabsTrigger key={value} value={value}>
-                <Icon /> {label}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </div>
+        {/* Mobile: a 3-column grid so every tab is visible without sideways
+            scrolling. From sm up it is the original single-row tab strip. */}
+        <TabsList className="grid h-auto! w-full grid-cols-3 sm:inline-flex sm:h-9! sm:w-fit">
+          {WORKSPACE_TABS.map(({ value, label, icon: Icon }) => (
+            <TabsTrigger
+              key={value}
+              value={value}
+              className="h-auto min-w-0 flex-col gap-1 px-1 py-2 text-xs sm:h-[calc(100%-1px)] sm:flex-row sm:gap-1.5 sm:px-2 sm:py-1 sm:text-sm"
+            >
+              <Icon /> {label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
 
         <TabsContent value="overview" className="mt-6">
           <OverviewTab project={project} />

@@ -66,8 +66,24 @@ export function PaperRow({
     .filter(Boolean)
     .join(' · ')
 
+  const statusBadge = (
+    <Badge
+      variant={STATUS_VARIANT[paper.status]}
+      title={
+        paper.status === 'failed'
+          ? (paper.processing_error ?? undefined)
+          : undefined
+      }
+    >
+      {paper.status === 'processing' && <Loader2 className="animate-spin" />}
+      {STATUS_INFO[paper.status].label}
+    </Badge>
+  )
+
+  // Below sm the row is compact: the status badge and project names move into the
+  // text column (nothing is dropped), and text wraps instead of truncating.
   return (
-    <li className="flex items-center gap-3 py-3">
+    <li className="flex items-start gap-3 py-3 sm:items-center">
       <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-accent text-accent-foreground">
         <FileText className="size-5" />
       </span>
@@ -75,27 +91,37 @@ export function PaperRow({
         <Link
           to="/papers/$paperId"
           params={{ paperId: paper.id }}
-          className="block max-w-full truncate text-sm font-medium text-foreground no-underline hover:underline"
+          className="block max-w-full text-sm font-medium break-words text-foreground no-underline hover:underline sm:truncate"
         >
           {paper.title}
         </Link>
-        <p className="truncate text-xs text-muted-foreground">{meta}</p>
+        <p className="text-xs break-words text-muted-foreground sm:truncate">
+          {meta}
+        </p>
         {paper.status !== 'ready' && (
           <p
             className={
               paper.status === 'failed'
-                ? 'truncate text-xs text-destructive'
-                : 'truncate text-xs text-muted-foreground'
+                ? 'text-xs break-words text-destructive sm:truncate'
+                : 'text-xs break-words text-muted-foreground sm:truncate'
             }
           >
             {STATUS_INFO[paper.status].headline}
           </p>
         )}
         {paper.original_filename && (
-          <p className="truncate text-xs text-muted-foreground/80">
+          <p className="text-xs break-words text-muted-foreground/80 sm:truncate">
             {paper.original_filename}
           </p>
         )}
+        {projectTitles && (
+          <p className="text-xs break-words text-muted-foreground sm:hidden">
+            {projectTitles.length === 0
+              ? 'No project'
+              : `In ${projectTitles.join(', ')}`}
+          </p>
+        )}
+        <div className="mt-1.5 sm:hidden">{statusBadge}</div>
       </div>
       {projectTitles && (
         <div className="hidden max-w-56 shrink-0 items-center gap-1 sm:flex">
@@ -118,17 +144,7 @@ export function PaperRow({
           )}
         </div>
       )}
-      <Badge
-        variant={STATUS_VARIANT[paper.status]}
-        title={
-          paper.status === 'failed'
-            ? (paper.processing_error ?? undefined)
-            : undefined
-        }
-      >
-        {paper.status === 'processing' && <Loader2 className="animate-spin" />}
-        {STATUS_INFO[paper.status].label}
-      </Badge>
+      <div className="hidden shrink-0 sm:block">{statusBadge}</div>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
