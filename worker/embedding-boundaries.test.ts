@@ -61,11 +61,25 @@ describe('embedding client boundaries', () => {
   it('is not imported by any browser/application code under src/ (outside the client itself)', () => {
     const others = walk(join(root, 'src')).filter(
       (p) =>
-        /\.(ts|tsx)$/.test(p) && !p.includes(join('src', 'lib', 'embedding')),
+        /\.(ts|tsx)$/.test(p) &&
+        !p.includes(join('src', 'lib', 'embedding')) &&
+        // Phase 4D.2: the server-side search feature (checked separately below).
+        !p.includes(join('src', 'features', 'search')),
     )
     for (const file of others) {
       expect(source(file), relative(root, file)).not.toMatch(/lib\/embedding/)
     }
+  })
+
+  it('within the search feature only the server embedder and service import it', () => {
+    const dir = join(root, 'src', 'features', 'search')
+    const importers = readdirSync(dir)
+      .filter((f) => f.endsWith('.ts') && !f.endsWith('.test.ts'))
+      .filter((f) => /lib\/embedding/.test(source(join(dir, f))))
+    expect(importers.sort()).toEqual([
+      'query-embedder.server.ts',
+      'search-service.ts',
+    ])
   })
 
   it('contains no API keys, and defines no VITE_ embedding variable', () => {
