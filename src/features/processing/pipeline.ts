@@ -14,6 +14,12 @@ import type {
   ProcessingOutcome,
 } from './types'
 
+/**
+ * Fewer non-whitespace characters than this across the whole document is
+ * treated as "no extractable text" (typically a scan with stray page numbers).
+ */
+export const MIN_MEANINGFUL_CHARS = 50
+
 export const DEFAULT_PROCESSING_OPTIONS: ProcessingOptions = {
   chunk: DEFAULT_CHUNK_OPTIONS,
 }
@@ -27,7 +33,7 @@ export function processExtractedDocument(
   options: ProcessingOptions = DEFAULT_PROCESSING_OPTIONS,
 ): ProcessedDocument {
   const normalized = normalizeDocument(extracted)
-  if (normalized.text === '') {
+  if (normalized.text.replace(/\s/g, '').length < MIN_MEANINGFUL_CHARS) {
     throw new ProcessingError(
       'no_extractable_text',
       FAILURE_MESSAGES.no_extractable_text,

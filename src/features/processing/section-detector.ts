@@ -2,13 +2,31 @@ import { pageAt } from './normalize'
 import type { DocumentSection, NormalizedDocument, SectionType } from './types'
 
 /**
- * Conservative, deterministic heading detection for common academic sections.
+ * Conservative, deterministic heading detection for academic papers.
  *
- * A line is a heading ONLY if the whole line (minus an optional number prefix
- * such as "2.", "3.1" or "II." and an optional trailing colon) is one of a fixed
- * vocabulary of headings, case-insensitively. Lines like "Introduction to graph
- * networks" or body sentences that merely mention "results" never match, and
- * unrecognized headings simply stay inside the previous section's text.
+ * Two kinds of line are recognized as headings, both only when the WHOLE line is
+ * the heading:
+ *
+ * 1. Known headings: the line (minus an optional number prefix such as "2.",
+ *    "3.1" or "II." and a trailing colon) is one of a fixed vocabulary
+ *    (Abstract, Introduction, Related Work, ...). They get a semantic type.
+ *
+ * 2. Structural numbered headings: a top-level numbered heading whose title is
+ *    NOT in the vocabulary (e.g. "3 BERT", "4 Experiments"), typed 'other'.
+ *    Because "3 something" also matches table rows, list items and wrapped
+ *    sentences, ALL of these must hold:
+ *      - it is a plain integer number (1-99), not "3.1"; subsections stay in
+ *        their parent section;
+ *      - it is the next top-level number in sequence: exactly one more than the
+ *        previous top-level heading (numbered known headings count too; the
+ *        first must be "1");
+ *      - the title looks like a heading: 1-8 words, each capitalized (short
+ *        function words like "of" and "and" excepted), no sentence punctuation,
+ *        no digits-first tokens, at most 60 characters;
+ *      - the line is preceded by a blank line (paragraph gap) or starts a page.
+ *
+ * Anything else, such as "Introduction to graph neural networks" or a sentence
+ * that merely mentions "results", never matches and stays in the previous section.
  */
 
 const MAX_HEADING_LENGTH = 60
@@ -64,6 +82,59 @@ export function matchHeading(line: string): SectionType | null {
   return null
 }
 
+const TOP_LEVEL_NUMBER = /^(\d{1,2})\.?\s+(\S.*)$/
+
+const MAX_TITLE_WORDS = 8
+
+/** Words allowed to be lowercase inside a title-case heading. */
+const SMALL_WORDS: ReadonlySet<string> = new Set([
+  'a',
+  'an',
+  'and',
+  'the',
+  'of',
+  'in',
+  'on',
+  'for',
+  'to',
+  'with',
+  'by',
+  'at',
+  'or',
+  'vs',
+  'via',
+  'from',
+  'as',
+  'into',
+  'over',
+  'per',
+])
+
+/** Letters, digits, spaces and light punctuation only: no sentence or math symbols. */
+const TITLE_CHARS = /^[\p{L}\p{N} \-–&'’()/+]+$/u
+
+/** The plain top-level number ("3" in "3 BERT" or "3. BERT"), or null ("3.1 X" -> null). */
+export function topLevelNumber(line: string): number | null {
+  const match = TOP_LEVEL_NUMBER.exec(line.trim())
+  return match ? Number(match[1]) : null
+}
+
+/** True if `title` (the text after the number) is shaped like a section heading. */
+export function looksLikeHeadingTitle(title: string): boolean {
+  const trimmed = title.trim()
+  if (trimmed === '' || trimmed.length > MAX_HEADING_LENGTH) return false
+  if (!TITLE_CHARS.test(trimmed)) return false
+  const words = trimmed.split(/\s+/)
+  if (words.length > MAX_TITLE_WORDS) return false
+  // Must start with a capitalized letter (rules out "3 768 12 ..." table rows).
+  if (!/^[(']?\p{Lu}/u.test(words[0])) return false
+  return words.every(
+    (word, i) =>
+      /^[(']?\p{Lu}/u.test(word) ||
+      (i > 0 && SMALL_WORDS.has(word.toLowerCase())),
+  )
+}
+
 type Heading = {
   title: string
   type: SectionType
@@ -75,11 +146,27 @@ type Heading = {
 function findHeadings(text: string): Heading[] {
   const headings: Heading[] = []
   let lineStart = 0
+  let previousBlank = true // the start of the document counts as a paragraph start
+  let lastTopLevel = 0
   while (lineStart <= text.length) {
     const newline = text.indexOf('\n', lineStart)
     const lineEnd = newline === -1 ? text.length : newline
     const line = text.slice(lineStart, lineEnd)
-    const type = matchHeading(line)
+    const number = topLevelNumber(line)
+
+    let type = matchHeading(line)
+    if (type) {
+      if (number !== null) lastTopLevel = number
+    } else if (
+      number !== null &&
+      number === lastTopLevel + 1 &&
+      previousBlank &&
+      looksLikeHeadingTitle(TOP_LEVEL_NUMBER.exec(line.trim())![2])
+    ) {
+      type = 'other'
+      lastTopLevel = number
+    }
+
     if (type) {
       headings.push({
         title: line.trim().replace(/:$/, ''),
@@ -88,6 +175,7 @@ function findHeadings(text: string): Heading[] {
         bodyStart: newline === -1 ? text.length : newline + 1,
       })
     }
+    previousBlank = line.trim() === ''
     if (newline === -1) break
     lineStart = newline + 1
   }

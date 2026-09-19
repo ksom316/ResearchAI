@@ -100,6 +100,8 @@ export type ProcessingErrorCode =
   | 'no_extractable_text'
   | 'extraction_failed'
   | 'timeout'
+  | 'storage_error'
+  | 'persistence_error'
 
 export type ProcessingFailure = {
   code: ProcessingErrorCode

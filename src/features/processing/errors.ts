@@ -18,6 +18,8 @@ export const FAILURE_MESSAGES: Record<ProcessingErrorCode, string> = {
     'No text could be extracted. The PDF may be a scan of images.',
   extraction_failed: 'Text extraction failed unexpectedly.',
   timeout: 'Processing took too long and was stopped.',
+  storage_error: 'The PDF file could not be downloaded from storage.',
+  persistence_error: 'The extracted text could not be saved.',
 }
 
 /**
