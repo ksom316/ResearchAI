@@ -115,11 +115,12 @@ describe('migration 0006 stays unchanged', () => {
     )
   })
 
-  it('is followed only by the Phase 4C migration (0007)', () => {
+  it('is followed only by the Phase 4C (0007) and 4D (0008) migrations', () => {
     const migrations = readdirSync(join(root, 'supabase/migrations')).sort()
-    expect(migrations.slice(-2)).toEqual([
+    expect(migrations.slice(-3)).toEqual([
       '0006_vector_foundation.sql',
       '0007_embedding_worker.sql',
+      '0008_semantic_search.sql',
     ])
   })
 })
