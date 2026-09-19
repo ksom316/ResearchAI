@@ -64,7 +64,9 @@ describe('embedding client boundaries', () => {
         /\.(ts|tsx)$/.test(p) &&
         !p.includes(join('src', 'lib', 'embedding')) &&
         // Phase 4D.2: the server-side search feature (checked separately below).
-        !p.includes(join('src', 'features', 'search')),
+        !p.includes(join('src', 'features', 'search')) &&
+        // Phase 5C: chat tests build a rate-limit EmbeddingError (non-test chat code must not import it).
+        !/features[\\/]chat[\\/].*\.test\.ts$/.test(p),
     )
     for (const file of others) {
       expect(source(file), relative(root, file)).not.toMatch(/lib\/embedding/)
