@@ -1,5 +1,6 @@
 import { ConfigError } from './config'
 import { VOYAGE_PHASE4_PROFILE } from '../src/lib/embedding/voyage'
+import { TOKEN_HEADROOM } from './embedding/rate-limiter'
 
 /**
  * Embedding configuration for the worker. Kept separate from loadConfig() so the
@@ -21,8 +22,19 @@ export type EmbeddingConfig = {
   batchSize: number
   /** Per-request time budget. */
   timeoutMs: number
-  /** Tries per request, first attempt included. */
+  /** Tries per request (batch), first attempt included. */
   maxAttempts: number
+  /** Provider limits we pace against. Defaults are this account's current limits. */
+  requestsPerMinute: number
+  tokensPerMinute: number
+  /** Estimated tokens allowed in one request (must fit inside the paced budget). */
+  maxRequestTokens: number
+  /** Attempts per indexing JOB (claims), before it is left as failed. */
+  jobMaxAttempts: number
+  /** An 'embedding' job with no progress for this long is treated as abandoned. */
+  staleAfterMinutes: number
+  /** Whether `npm run worker` also runs the embedding stage (off by default). */
+  stageEnabled: boolean
 }
 
 type Env = Record<string, string | undefined>
@@ -81,6 +93,37 @@ export function loadEmbeddingConfig(env: Env = process.env): EmbeddingConfig {
     )
   }
 
+  const requestsPerMinute = readInt(env, 'EMBEDDING_RPM_LIMIT', 3, 1, 100_000)
+  const tokensPerMinute = readInt(
+    env,
+    'EMBEDDING_TPM_LIMIT',
+    10_000,
+    1_000,
+    100_000_000,
+  )
+  const maxRequestTokens = readInt(
+    env,
+    'EMBEDDING_MAX_REQUEST_TOKENS',
+    4_000,
+    500,
+    1_000_000,
+  )
+  const budget = Math.floor(tokensPerMinute * TOKEN_HEADROOM)
+  if (maxRequestTokens > budget) {
+    throw new ConfigError(
+      `EMBEDDING_MAX_REQUEST_TOKENS (${maxRequestTokens}) must not exceed the paced token budget (${budget}).`,
+    )
+  }
+
+  const stage = env.EMBEDDING_STAGE_ENABLED?.trim().toLowerCase()
+  if (
+    stage !== undefined &&
+    stage !== '' &&
+    !['true', 'false', '1', '0'].includes(stage)
+  ) {
+    throw new ConfigError('EMBEDDING_STAGE_ENABLED must be true or false.')
+  }
+
   return {
     apiKey,
     model,
@@ -88,5 +131,17 @@ export function loadEmbeddingConfig(env: Env = process.env): EmbeddingConfig {
     batchSize: readInt(env, 'EMBEDDING_BATCH_SIZE', 32, 1, 128),
     timeoutMs: readInt(env, 'EMBEDDING_TIMEOUT_MS', 30_000, 1_000, 120_000),
     maxAttempts: readInt(env, 'EMBEDDING_MAX_ATTEMPTS', 4, 1, 8),
+    requestsPerMinute,
+    tokensPerMinute,
+    maxRequestTokens,
+    jobMaxAttempts: readInt(env, 'EMBEDDING_JOB_MAX_ATTEMPTS', 4, 1, 10),
+    staleAfterMinutes: readInt(
+      env,
+      'EMBEDDING_STALE_AFTER_MINUTES',
+      15,
+      2,
+      1440,
+    ),
+    stageEnabled: stage === 'true' || stage === '1',
   }
 }

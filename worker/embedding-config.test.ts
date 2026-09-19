@@ -16,6 +16,12 @@ describe('loadEmbeddingConfig', () => {
       batchSize: 32,
       timeoutMs: 30_000,
       maxAttempts: 4,
+      requestsPerMinute: 3,
+      tokensPerMinute: 10_000,
+      maxRequestTokens: 4_000,
+      jobMaxAttempts: 4,
+      staleAfterMinutes: 15,
+      stageEnabled: false,
     })
   })
 

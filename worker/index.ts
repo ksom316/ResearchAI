@@ -1,10 +1,13 @@
 import { ConfigError, loadConfig } from './config'
 import { describeError } from './diagnostics'
 import { createSupabaseJobStore, createWorkerClient } from './job-store'
-import { runLoop } from './loop'
+import { abortableSleep, runLoop } from './loop'
 import type { LoopMode } from './loop'
+import { createEmbeddingRunner } from './embedding/create-runner'
+import { loadEmbeddingConfig } from './embedding-config'
 import { PdfJsExtractor } from './pdf-extractor'
 import { runNextJob } from './run-job'
+import { runScheduler } from './scheduler'
 
 /**
  * Local PDF processing worker.
@@ -44,11 +47,42 @@ async function main() {
   log(
     `worker started (supabase host: ${new URL(config.supabaseUrl).host}, mode: ${mode}, poll ${config.pollIntervalMs / 1000}s, max attempts ${config.maxAttempts})`,
   )
-  await runLoop(mode, controller.signal, {
-    runNextJob: () => runNextJob({ store, extractor, config, log }),
-    pollIntervalMs: config.pollIntervalMs,
-    log,
-  })
+  // The embedding stage is opt-in (EMBEDDING_STAGE_ENABLED=true) and only runs in
+  // continuous mode. Without it the worker behaves exactly as before.
+  const embeddingConfig = process.env.EMBEDDING_STAGE_ENABLED
+    ? loadEmbeddingConfig()
+    : null
+  if (embeddingConfig?.stageEnabled && mode !== 'continuous') {
+    log(
+      'embedding stage is only run in continuous mode; skipping it for this run',
+    )
+  }
+
+  if (embeddingConfig?.stageEnabled && mode === 'continuous') {
+    const runner = createEmbeddingRunner({
+      client: createWorkerClient(config),
+      config: embeddingConfig,
+      log,
+    })
+    log(
+      `embedding stage enabled (voyage-4, ${embeddingConfig.requestsPerMinute} req/min, ` +
+        `${embeddingConfig.tokensPerMinute} tokens/min)`,
+    )
+    await runScheduler(controller.signal, {
+      pdf: () => runNextJob({ store, extractor, config, log }),
+      embedding: runner,
+      pollIntervalMs: config.pollIntervalMs,
+      now: Date.now,
+      sleep: abortableSleep,
+      log,
+    })
+  } else {
+    await runLoop(mode, controller.signal, {
+      runNextJob: () => runNextJob({ store, extractor, config, log }),
+      pollIntervalMs: config.pollIntervalMs,
+      log,
+    })
+  }
   log('worker stopped')
 }
 

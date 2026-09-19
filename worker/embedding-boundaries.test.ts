@@ -105,7 +105,7 @@ describe('.env.worker.example', () => {
   })
 })
 
-describe('migration 0006 is unchanged (Phase 4B adds no database changes)', () => {
+describe('migration 0006 stays unchanged', () => {
   it('matches its pinned hash (line endings normalized)', () => {
     const text = source(
       join(root, 'supabase/migrations/0006_vector_foundation.sql'),
@@ -115,8 +115,11 @@ describe('migration 0006 is unchanged (Phase 4B adds no database changes)', () =
     )
   })
 
-  it('has no newer migration yet', () => {
+  it('is followed only by the Phase 4C migration (0007)', () => {
     const migrations = readdirSync(join(root, 'supabase/migrations')).sort()
-    expect(migrations.at(-1)).toBe('0006_vector_foundation.sql')
+    expect(migrations.slice(-2)).toEqual([
+      '0006_vector_foundation.sql',
+      '0007_embedding_worker.sql',
+    ])
   })
 })

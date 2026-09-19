@@ -17,7 +17,9 @@
     "worker": "tsx --env-file=.env.worker worker/index.ts",
     "worker:once": "tsx --env-file=.env.worker worker/index.ts --once",
     "worker:drain": "tsx --env-file=.env.worker worker/index.ts --drain",
-    "embedding:smoke": "tsx --env-file=.env.worker worker/embedding-smoke.ts"
+    "embedding:smoke": "tsx --env-file=.env.worker worker/embedding-smoke.ts",
+    "embedding:index": "tsx --env-file=.env.worker worker/embedding-index.ts",
+    "embedding:index:dry": "tsx --env-file=.env.worker worker/embedding-index.ts --dry-run"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
