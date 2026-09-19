@@ -8,6 +8,7 @@ import { Button } from '#/components/ui/button'
 import { Skeleton } from '#/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '#/components/ui/tabs'
 import { PageHeader } from '#/components/page-header'
+import { ChatPanel } from '#/features/chat/ui/chat-panel'
 import { DeleteProjectDialog } from '../components/delete-project-dialog'
 import { RenameProjectDialog } from '../components/rename-project-dialog'
 import { projectQuery } from '../queries'
@@ -18,11 +19,6 @@ import { WORKSPACE_TABS } from './tabs'
 import type { WorkspaceTab } from './tabs'
 
 const PLACEHOLDERS = {
-  'ai-research': {
-    title: 'AI Research',
-    description:
-      'Chat with your sources and surface possible research gaps, grounded in your papers.',
-  },
   evidence: {
     title: 'Evidence',
     description:
@@ -143,6 +139,9 @@ export function ProjectWorkspace({
         </TabsContent>
         <TabsContent value="papers" className="mt-6">
           <PapersTab projectId={project.id} />
+        </TabsContent>
+        <TabsContent value="ai-research" className="mt-6">
+          <ChatPanel key={project.id} projectId={project.id} />
         </TabsContent>
         {WORKSPACE_TABS.filter((t) => t.value in PLACEHOLDERS).map(
           ({ value, icon }) => (

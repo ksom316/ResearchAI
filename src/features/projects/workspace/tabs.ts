@@ -10,7 +10,7 @@ import {
 export const WORKSPACE_TABS = [
   { value: 'overview', label: 'Overview', icon: LayoutList },
   { value: 'papers', label: 'Papers', icon: FileText },
-  { value: 'ai-research', label: 'AI Research', icon: Sparkles },
+  { value: 'ai-research', label: 'Research Chat', icon: Sparkles },
   { value: 'evidence', label: 'Evidence', icon: Quote },
   { value: 'comparisons', label: 'Comparisons', icon: GitCompare },
   { value: 'writing', label: 'Writing', icon: PenLine },

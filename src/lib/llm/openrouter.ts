@@ -10,7 +10,7 @@ import type {
 export const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1'
 
 export const DEFAULT_TEMPERATURE = 0.1
-export const DEFAULT_TIMEOUT_MS = 45_000
+export const DEFAULT_TIMEOUT_MS = 75_000
 
 /**
  * How structure is requested. The caller (server adapter) chooses; nothing here guesses

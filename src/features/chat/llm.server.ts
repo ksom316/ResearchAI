@@ -7,7 +7,7 @@ import type { LlmProvider, StructuredMode } from '#/lib/llm'
  * LLM_MODEL are read at call time, never as VITE_ variables, never logged, and never
  * echoed in errors. One configured model: no fallback, no racing.
  */
-export const LLM_TIMEOUT_MS = 45_000
+export const LLM_TIMEOUT_MS = 75_000
 
 const PLACEHOLDER =
   /your|placeholder|changeme|change-me|example|xxx|\.\.\.|<|>/i
