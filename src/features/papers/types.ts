@@ -12,5 +12,7 @@ export type Paper = {
   content_hash: string | null
   file_size_bytes: number | null
   status: PaperStatus
+  page_count: number | null
+  processing_error: string | null
   created_at: string
 }

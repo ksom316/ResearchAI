@@ -9,7 +9,7 @@ import {
 } from './validation'
 
 const COLUMNS =
-  'id, title, authors, publication_year, original_filename, mime_type, storage_path, content_hash, file_size_bytes, status, created_at'
+  'id, title, authors, publication_year, original_filename, mime_type, storage_path, content_hash, file_size_bytes, status, page_count, processing_error, created_at'
 
 type PaperRow = Omit<Paper, 'project_ids'> & {
   paper_project_links: { project_id: string }[]
@@ -154,7 +154,7 @@ export async function uploadPaper(input: {
       storage_path: path,
       content_hash: hash,
       file_size_bytes: input.file.size,
-      status: 'uploaded',
+      // status is not client-writable; the database default ('uploaded') applies.
     })
     .select(COLUMNS)
     .single()

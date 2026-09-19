@@ -3,6 +3,7 @@ import {
   FileText,
   FolderMinus,
   FolderPlus,
+  Loader2,
   MoreHorizontal,
   Trash2,
 } from 'lucide-react'
@@ -23,6 +24,16 @@ const STATUS_LABEL: Record<PaperStatus, string> = {
   processing: 'Processing',
   ready: 'Ready',
   failed: 'Failed',
+}
+
+const STATUS_VARIANT: Record<
+  PaperStatus,
+  'default' | 'secondary' | 'destructive'
+> = {
+  uploaded: 'secondary',
+  processing: 'secondary',
+  ready: 'default',
+  failed: 'destructive',
 }
 
 export function PaperRow({
@@ -50,6 +61,9 @@ export function PaperRow({
 
   const meta = [
     byline,
+    paper.page_count != null
+      ? `${paper.page_count} ${paper.page_count === 1 ? 'page' : 'pages'}`
+      : null,
     paper.file_size_bytes != null ? formatBytes(paper.file_size_bytes) : null,
     `Added ${formatDate(paper.created_at)}`,
   ]
@@ -98,7 +112,15 @@ export function PaperRow({
           )}
         </div>
       )}
-      <Badge variant={paper.status === 'failed' ? 'destructive' : 'secondary'}>
+      <Badge
+        variant={STATUS_VARIANT[paper.status]}
+        title={
+          paper.status === 'failed'
+            ? (paper.processing_error ?? undefined)
+            : undefined
+        }
+      >
+        {paper.status === 'processing' && <Loader2 className="animate-spin" />}
         {STATUS_LABEL[paper.status]}
       </Badge>
       <DropdownMenu>
