@@ -51,8 +51,11 @@ export function normalizeDocument(doc: ExtractedDocument): NormalizedDocument {
   return { pageCount: doc.pageCount, text, pageStarts, pageNumbers }
 }
 
-/** Page number containing `offset` in the normalized text, or null if there are no pages. */
-export function pageAt(doc: NormalizedDocument, offset: number): number | null {
+/** Index into pageStarts/pageNumbers of the page containing `offset`, or null if there are no pages. */
+export function pageIndexAt(
+  doc: NormalizedDocument,
+  offset: number,
+): number | null {
   if (doc.pageStarts.length === 0) return null
   let lo = 0
   let hi = doc.pageStarts.length - 1
@@ -61,5 +64,11 @@ export function pageAt(doc: NormalizedDocument, offset: number): number | null {
     if (doc.pageStarts[mid] <= offset) lo = mid
     else hi = mid - 1
   }
-  return doc.pageNumbers[lo]
+  return lo
+}
+
+/** Page number containing `offset` in the normalized text, or null if there are no pages. */
+export function pageAt(doc: NormalizedDocument, offset: number): number | null {
+  const index = pageIndexAt(doc, offset)
+  return index === null ? null : doc.pageNumbers[index]
 }
