@@ -14,11 +14,14 @@ import type { Paper } from '../types'
 export function DeletePaperDialog({
   paper,
   onOpenChange,
+  onDeleted,
 }: {
   paper: Paper | null
   onOpenChange: (open: boolean) => void
+  /** Called right after the paper was deleted, before caches refresh (e.g. to leave its detail page). */
+  onDeleted?: () => void | Promise<unknown>
 }) {
-  const remove = useDeletePaper(() => onOpenChange(false))
+  const remove = useDeletePaper(() => onOpenChange(false), { onDeleted })
 
   return (
     <AlertDialog

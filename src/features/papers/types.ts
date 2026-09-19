@@ -16,3 +16,13 @@ export type Paper = {
   processing_error: string | null
   created_at: string
 }
+
+/** One entry of a paper's document outline. The section text is deliberately not loaded. */
+export type PaperSection = {
+  id: string
+  position: number
+  title: string
+  section_type: string
+  page_start: number | null
+  page_end: number | null
+}

@@ -1,4 +1,6 @@
+import { Link } from '@tanstack/react-router'
 import {
+  Eye,
   ExternalLink,
   FileText,
   FolderMinus,
@@ -17,14 +19,8 @@ import {
   DropdownMenuTrigger,
 } from '#/components/ui/dropdown-menu'
 import { formatBytes, formatDate } from '#/lib/format'
+import { STATUS_INFO } from '../status'
 import type { Paper, PaperStatus } from '../types'
-
-const STATUS_LABEL: Record<PaperStatus, string> = {
-  uploaded: 'Uploaded',
-  processing: 'Processing',
-  ready: 'Ready',
-  failed: 'Failed',
-}
 
 const STATUS_VARIANT: Record<
   PaperStatus,
@@ -76,15 +72,25 @@ export function PaperRow({
         <FileText className="size-5" />
       </span>
       <div className="min-w-0 flex-1">
-        <button
-          type="button"
-          onClick={() => onOpen(paper)}
-          disabled={!paper.storage_path}
-          className="block max-w-full truncate text-left text-sm font-medium hover:underline disabled:no-underline"
+        <Link
+          to="/papers/$paperId"
+          params={{ paperId: paper.id }}
+          className="block max-w-full truncate text-sm font-medium text-foreground no-underline hover:underline"
         >
           {paper.title}
-        </button>
+        </Link>
         <p className="truncate text-xs text-muted-foreground">{meta}</p>
+        {paper.status !== 'ready' && (
+          <p
+            className={
+              paper.status === 'failed'
+                ? 'truncate text-xs text-destructive'
+                : 'truncate text-xs text-muted-foreground'
+            }
+          >
+            {STATUS_INFO[paper.status].headline}
+          </p>
+        )}
         {paper.original_filename && (
           <p className="truncate text-xs text-muted-foreground/80">
             {paper.original_filename}
@@ -121,7 +127,7 @@ export function PaperRow({
         }
       >
         {paper.status === 'processing' && <Loader2 className="animate-spin" />}
-        {STATUS_LABEL[paper.status]}
+        {STATUS_INFO[paper.status].label}
       </Badge>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -134,6 +140,11 @@ export function PaperRow({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
+          <DropdownMenuItem asChild>
+            <Link to="/papers/$paperId" params={{ paperId: paper.id }}>
+              <Eye /> View details
+            </Link>
+          </DropdownMenuItem>
           <DropdownMenuItem
             disabled={!paper.storage_path}
             onSelect={() => onOpen(paper)}

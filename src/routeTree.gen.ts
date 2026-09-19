@@ -19,6 +19,7 @@ import { Route as AuthedDashboardRouteImport } from './routes/_authed/dashboard'
 import { Route as AuthedLibraryRouteImport } from './routes/_authed/library'
 import { Route as AuthedSettingsRouteImport } from './routes/_authed/settings'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
+import { Route as AuthedPapersPaperIdRouteImport } from './routes/_authed/papers/$paperId'
 import { Route as AuthedProjectsIndexRouteImport } from './routes/_authed/projects/index'
 import { Route as AuthedProjectsProjectIdRouteImport } from './routes/_authed/projects/$projectId'
 
@@ -71,6 +72,11 @@ const AuthCallbackRoute = AuthCallbackRouteImport.update({
   path: '/auth/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthedPapersPaperIdRoute = AuthedPapersPaperIdRouteImport.update({
+  id: '/papers/$paperId',
+  path: '/papers/$paperId',
+  getParentRoute: () => AuthedRoute,
+} as any)
 const AuthedProjectsIndexRoute = AuthedProjectsIndexRouteImport.update({
   id: '/projects/',
   path: '/projects/',
@@ -92,6 +98,7 @@ export interface FileRoutesByFullPath {
   '/library': typeof AuthedLibraryRoute
   '/settings': typeof AuthedSettingsRoute
   '/auth/callback': typeof AuthCallbackRoute
+  '/papers/$paperId': typeof AuthedPapersPaperIdRoute
   '/projects/$projectId': typeof AuthedProjectsProjectIdRoute
   '/projects/': typeof AuthedProjectsIndexRoute
 }
@@ -105,6 +112,7 @@ export interface FileRoutesByTo {
   '/library': typeof AuthedLibraryRoute
   '/settings': typeof AuthedSettingsRoute
   '/auth/callback': typeof AuthCallbackRoute
+  '/papers/$paperId': typeof AuthedPapersPaperIdRoute
   '/projects/$projectId': typeof AuthedProjectsProjectIdRoute
   '/projects': typeof AuthedProjectsIndexRoute
 }
@@ -120,6 +128,7 @@ export interface FileRoutesById {
   '/_authed/library': typeof AuthedLibraryRoute
   '/_authed/settings': typeof AuthedSettingsRoute
   '/auth/callback': typeof AuthCallbackRoute
+  '/_authed/papers/$paperId': typeof AuthedPapersPaperIdRoute
   '/_authed/projects/$projectId': typeof AuthedProjectsProjectIdRoute
   '/_authed/projects/': typeof AuthedProjectsIndexRoute
 }
@@ -135,6 +144,7 @@ export interface FileRouteTypes {
     | '/library'
     | '/settings'
     | '/auth/callback'
+    | '/papers/$paperId'
     | '/projects/$projectId'
     | '/projects/'
   fileRoutesByTo: FileRoutesByTo
@@ -148,6 +158,7 @@ export interface FileRouteTypes {
     | '/library'
     | '/settings'
     | '/auth/callback'
+    | '/papers/$paperId'
     | '/projects/$projectId'
     | '/projects'
   id:
@@ -162,6 +173,7 @@ export interface FileRouteTypes {
     | '/_authed/library'
     | '/_authed/settings'
     | '/auth/callback'
+    | '/_authed/papers/$paperId'
     | '/_authed/projects/$projectId'
     | '/_authed/projects/'
   fileRoutesById: FileRoutesById
@@ -248,6 +260,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authed/papers/$paperId': {
+      id: '/_authed/papers/$paperId'
+      path: '/papers/$paperId'
+      fullPath: '/papers/$paperId'
+      preLoaderRoute: typeof AuthedPapersPaperIdRouteImport
+      parentRoute: typeof AuthedRoute
+    }
     '/_authed/projects/': {
       id: '/_authed/projects/'
       path: '/projects'
@@ -269,6 +288,7 @@ interface AuthedRouteChildren {
   AuthedDashboardRoute: typeof AuthedDashboardRoute
   AuthedLibraryRoute: typeof AuthedLibraryRoute
   AuthedSettingsRoute: typeof AuthedSettingsRoute
+  AuthedPapersPaperIdRoute: typeof AuthedPapersPaperIdRoute
   AuthedProjectsProjectIdRoute: typeof AuthedProjectsProjectIdRoute
   AuthedProjectsIndexRoute: typeof AuthedProjectsIndexRoute
 }
@@ -277,6 +297,7 @@ const AuthedRouteChildren: AuthedRouteChildren = {
   AuthedDashboardRoute: AuthedDashboardRoute,
   AuthedLibraryRoute: AuthedLibraryRoute,
   AuthedSettingsRoute: AuthedSettingsRoute,
+  AuthedPapersPaperIdRoute: AuthedPapersPaperIdRoute,
   AuthedProjectsProjectIdRoute: AuthedProjectsProjectIdRoute,
   AuthedProjectsIndexRoute: AuthedProjectsIndexRoute,
 }

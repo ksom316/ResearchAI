@@ -1,6 +1,6 @@
 import { getSupabaseBrowserClient } from '#/lib/supabase/client'
 import { getSignedUrl, removeObject, uploadObject } from './storage'
-import type { Paper } from './types'
+import type { Paper, PaperSection } from './types'
 import {
   PDF_MIME,
   hashFile,
@@ -38,6 +38,30 @@ export async function listPapers(options?: {
   const { data, error } = await query
   if (error) throw error
   return (data as unknown as PaperRow[]).map(toPaper)
+}
+
+/** One paper (RLS limits this to the owner), or null if it doesn't exist / isn't theirs. */
+export async function getPaper(id: string): Promise<Paper | null> {
+  const { data, error } = await getSupabaseBrowserClient()
+    .from('papers')
+    .select(`${COLUMNS}, paper_project_links(project_id)`)
+    .eq('id', id)
+    .maybeSingle()
+  if (error) throw error
+  return data ? toPaper(data) : null
+}
+
+/** Outline entries only (no section text), in document order. Read-only under RLS. */
+export async function listPaperSections(
+  paperId: string,
+): Promise<PaperSection[]> {
+  const { data, error } = await getSupabaseBrowserClient()
+    .from('paper_sections')
+    .select('id, position, title, section_type, page_start, page_end')
+    .eq('paper_id', paperId)
+    .order('position', { ascending: true })
+  if (error) throw error
+  return data as PaperSection[]
 }
 
 export async function getLibraryStats() {
