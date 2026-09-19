@@ -1,26 +1,166 @@
-import { UploadCloud } from 'lucide-react'
-import { Badge } from '#/components/ui/badge'
+import { useRef, useState } from 'react'
+import type { DragEvent } from 'react'
+import { AlertCircle, Loader2, UploadCloud } from 'lucide-react'
+import { toast } from 'sonner'
+import { Button } from '#/components/ui/button'
+import { cn } from '#/lib/utils'
+import { useUploadPaper } from '../queries'
+import { validatePdf } from '../validation'
+
+type Progress = { name: string; index: number; total: number; pct: number }
 
 /**
- * Placeholder for the future PDF upload flow. It is intentionally inert:
- * upload, storage writes, and document processing are not part of Phase 1.
+ * PDF upload area. Files upload one at a time; while anything is in flight the
+ * picker and drop target are disabled so a submission can't be duplicated.
  */
-export function UploadDropzone() {
+export function UploadDropzone({ projectId }: { projectId?: string }) {
+  const upload = useUploadPaper()
+  const inputRef = useRef<HTMLInputElement>(null)
+  const busyRef = useRef(false)
+  const [progress, setProgress] = useState<Progress | null>(null)
+  const [errors, setErrors] = useState<string[]>([])
+  const [dragging, setDragging] = useState(false)
+  const busy = progress !== null
+
+  async function handleFiles(fileList: FileList | File[]) {
+    if (busyRef.current) return
+    const files = Array.from(fileList)
+    if (files.length === 0) return
+    busyRef.current = true
+    setErrors([])
+
+    const problems: string[] = []
+    const valid: File[] = []
+    for (const file of files) {
+      const problem = await validatePdf(file)
+      if (problem) problems.push(problem)
+      else valid.push(file)
+    }
+
+    let succeeded = 0
+    for (const [i, file] of valid.entries()) {
+      setProgress({
+        name: file.name,
+        index: i + 1,
+        total: valid.length,
+        pct: 0,
+      })
+      try {
+        await upload.mutateAsync({
+          file,
+          projectId: projectId ?? null,
+          onProgress: (f) =>
+            setProgress((p) => p && { ...p, pct: Math.round(f * 100) }),
+        })
+        succeeded++
+      } catch (e) {
+        problems.push(
+          `“${file.name}”: ${e instanceof Error ? e.message : 'Upload failed.'}`,
+        )
+      }
+    }
+
+    setProgress(null)
+    setErrors(problems)
+    busyRef.current = false
+    if (inputRef.current) inputRef.current.value = ''
+    if (succeeded > 0) {
+      toast.success(
+        succeeded === 1 ? 'Paper uploaded' : `${succeeded} papers uploaded`,
+      )
+    }
+  }
+
+  function onDrop(e: DragEvent) {
+    e.preventDefault()
+    setDragging(false)
+    if (!busy) void handleFiles(e.dataTransfer.files)
+  }
+
   return (
-    <div
-      aria-disabled="true"
-      className="flex flex-col items-center rounded-xl border border-dashed bg-muted/40 px-6 py-8 text-center"
-    >
-      <span className="mb-3 flex size-11 items-center justify-center rounded-full bg-background text-muted-foreground shadow-sm">
-        <UploadCloud className="size-5" />
-      </span>
-      <p className="font-medium">Upload PDF papers</p>
-      <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-        Drag and drop academic PDFs here to add them to your library.
-      </p>
-      <Badge variant="secondary" className="mt-3">
-        Coming soon
-      </Badge>
+    <div className="space-y-3">
+      <div
+        onDragOver={(e) => {
+          e.preventDefault()
+          if (!busy) setDragging(true)
+        }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={onDrop}
+        aria-busy={busy}
+        className={cn(
+          'flex flex-col items-center rounded-xl border border-dashed bg-muted/40 px-6 py-8 text-center transition-colors',
+          dragging && 'border-primary bg-accent/50',
+        )}
+      >
+        <span className="mb-3 flex size-11 items-center justify-center rounded-full bg-background text-muted-foreground shadow-sm">
+          {busy ? (
+            <Loader2 className="size-5 animate-spin" />
+          ) : (
+            <UploadCloud className="size-5" />
+          )}
+        </span>
+        <p className="font-medium">
+          {busy ? `Uploading ${progress.name}` : 'Upload PDF papers'}
+        </p>
+        {busy ? (
+          <div className="mt-3 w-full max-w-xs space-y-1.5">
+            <div
+              role="progressbar"
+              aria-valuenow={progress.pct}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              className="h-2 overflow-hidden rounded-full bg-secondary"
+            >
+              <div
+                className="h-full bg-primary transition-[width]"
+                style={{ width: `${progress.pct}%` }}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {progress.pct}%
+              {progress.total > 1 &&
+                ` · file ${progress.index} of ${progress.total}`}
+            </p>
+          </div>
+        ) : (
+          <>
+            <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+              Drag and drop PDFs here, or browse. PDF only, up to 50 MB each.
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              className="mt-4"
+              onClick={() => inputRef.current?.click()}
+            >
+              Choose files
+            </Button>
+          </>
+        )}
+        <input
+          ref={inputRef}
+          type="file"
+          accept="application/pdf,.pdf"
+          multiple
+          hidden
+          disabled={busy}
+          onChange={(e) => e.target.files && void handleFiles(e.target.files)}
+        />
+      </div>
+
+      {errors.length > 0 && (
+        <div
+          role="alert"
+          className="flex gap-3 rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm"
+        >
+          <AlertCircle className="mt-0.5 size-5 shrink-0 text-destructive" />
+          <ul className="space-y-1">
+            {errors.map((message) => (
+              <li key={message}>{message}</li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   )
 }

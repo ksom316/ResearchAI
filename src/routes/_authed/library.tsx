@@ -20,7 +20,7 @@ function LibraryPage() {
         <UploadDropzone />
         <Card>
           <CardContent>
-            <PaperList emptyDescription="Your library is empty. PDF uploads are coming soon." />
+            <PaperList emptyDescription="Your library is empty. Upload a PDF above to get started." />
           </CardContent>
         </Card>
       </div>

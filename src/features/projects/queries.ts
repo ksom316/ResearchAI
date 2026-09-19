@@ -12,6 +12,7 @@ import {
   updateProject,
 } from './api'
 import type { ProjectInput } from './api'
+import { paperKeys } from '#/features/papers/queries'
 
 export const projectKeys = {
   all: ['projects'] as const,
@@ -66,6 +67,7 @@ export function useDeleteProject(id: string, onSuccess?: () => void) {
     onSuccess: async () => {
       queryClient.removeQueries({ queryKey: projectKeys.detail(id) })
       await queryClient.invalidateQueries({ queryKey: projectKeys.all })
+      await queryClient.invalidateQueries({ queryKey: paperKeys.all })
       toast.success('Project deleted')
       onSuccess?.()
     },
