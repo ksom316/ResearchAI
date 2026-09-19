@@ -4,14 +4,29 @@ import { Link, useRouter } from '@tanstack/react-router'
 import { Loader2 } from 'lucide-react'
 import { Button } from '#/components/ui/button'
 import { signInFn } from '#/lib/auth/auth.functions'
+import { safeRedirect } from '#/lib/auth/redirect'
 import { signInSchema } from '#/lib/auth/schemas'
 import { AuthCard } from './auth-card'
 import { FormField } from './form-field'
+import { GoogleButton } from './google-button'
 
-export function SignInForm({ redirectTo }: { redirectTo?: string }) {
+const OAUTH_ERRORS: Record<string, string> = {
+  oauth_cancelled: 'Google sign-in was cancelled.',
+  oauth_failed: 'We couldn’t sign you in with Google. Please try again.',
+}
+
+export function SignInForm({
+  redirectTo,
+  error,
+}: {
+  redirectTo?: string
+  error?: string
+}) {
   const router = useRouter()
   const [pending, setPending] = useState(false)
-  const [formError, setFormError] = useState<string>()
+  const [formError, setFormError] = useState<string | undefined>(
+    error ? OAUTH_ERRORS[error] : undefined,
+  )
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
@@ -60,6 +75,9 @@ export function SignInForm({ redirectTo }: { redirectTo?: string }) {
         </>
       }
     >
+      <GoogleButton
+        redirectTo={redirectTo ? safeRedirect(redirectTo) : undefined}
+      />
       <form onSubmit={onSubmit} className="space-y-4" noValidate>
         <FormField
           id="email"
@@ -75,6 +93,14 @@ export function SignInForm({ redirectTo }: { redirectTo?: string }) {
           autoComplete="current-password"
           error={fieldErrors.password}
         />
+        <div className="-mt-2 text-right text-sm">
+          <Link
+            to="/forgot-password"
+            className="font-medium text-primary underline"
+          >
+            Forgot password?
+          </Link>
+        </div>
         {formError && (
           <p role="alert" className="text-sm text-destructive">
             {formError}
@@ -87,11 +113,4 @@ export function SignInForm({ redirectTo }: { redirectTo?: string }) {
       </form>
     </AuthCard>
   )
-}
-
-/** Only allow same-origin relative paths to prevent open redirects. */
-function safeRedirect(target?: string): string {
-  return target && target.startsWith('/') && !target.startsWith('//')
-    ? target
-    : '/dashboard'
 }

@@ -1,6 +1,7 @@
 import { createServerFn } from '@tanstack/react-start'
+import { z } from 'zod'
 import { createSupabaseServerClient } from '#/lib/supabase/supabase.server'
-import { signInSchema, signUpSchema } from './schemas'
+import { resetPasswordSchema, signInSchema, signUpSchema } from './schemas'
 
 export type AuthUser = {
   id: string
@@ -59,3 +60,37 @@ export const signOutFn = createServerFn({ method: 'POST' }).handler(
     await supabase.auth.signOut()
   },
 )
+
+/** Exchanges a PKCE auth code (Google OAuth or password recovery) for a session cookie. */
+export const exchangeOAuthCodeFn = createServerFn({ method: 'POST' })
+  .validator(z.object({ code: z.string().min(1).max(2048) }))
+  .handler(async ({ data }): Promise<{ ok: boolean }> => {
+    const supabase = createSupabaseServerClient()
+    const { error } = await supabase.auth.exchangeCodeForSession(data.code)
+    return { ok: !error }
+  })
+
+/** Sets a new password for the user holding a (recovery) session. */
+export const updatePasswordFn = createServerFn({ method: 'POST' })
+  .validator(resetPasswordSchema)
+  .handler(async ({ data }): Promise<AuthResult> => {
+    const supabase = createSupabaseServerClient()
+    const { data: current } = await supabase.auth.getUser()
+    if (!current.user) {
+      return {
+        ok: false,
+        message: 'Your reset link has expired. Request a new one to continue.',
+      }
+    }
+    const { error } = await supabase.auth.updateUser({
+      password: data.password,
+    })
+    if (!error) return { ok: true }
+    const message =
+      error.code === 'same_password'
+        ? 'Choose a password different from your current one.'
+        : error.code === 'weak_password'
+          ? 'That password is too easy to guess. Try a longer or more varied one.'
+          : 'We could not update your password. Please try again.'
+    return { ok: false, message }
+  })

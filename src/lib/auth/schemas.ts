@@ -11,5 +11,19 @@ export const signUpSchema = z.object({
   password: z.string().min(8, 'Use at least 8 characters').max(72),
 })
 
+export const forgotPasswordSchema = z.object({
+  email: z.string().trim().email('Enter a valid email address'),
+})
+
+export const resetPasswordSchema = z
+  .object({
+    password: z.string().min(8, 'Use at least 8 characters').max(72),
+    confirmPassword: z.string().min(1, 'Confirm your new password'),
+  })
+  .refine((v) => v.password === v.confirmPassword, {
+    path: ['confirmPassword'],
+    message: 'Passwords do not match',
+  })
+
 export type SignInInput = z.infer<typeof signInSchema>
 export type SignUpInput = z.infer<typeof signUpSchema>

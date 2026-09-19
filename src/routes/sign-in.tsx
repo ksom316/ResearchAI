@@ -3,8 +3,12 @@ import { getCurrentUser } from '#/lib/auth/auth.functions'
 import { SignInForm } from '#/features/auth/sign-in-form'
 
 export const Route = createFileRoute('/sign-in')({
-  validateSearch: (search: Record<string, unknown>): { redirect?: string } =>
-    typeof search.redirect === 'string' ? { redirect: search.redirect } : {},
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { redirect?: string; error?: string } => ({
+    redirect: typeof search.redirect === 'string' ? search.redirect : undefined,
+    error: typeof search.error === 'string' ? search.error : undefined,
+  }),
   beforeLoad: async () => {
     if (await getCurrentUser()) throw redirect({ to: '/dashboard' })
   },
@@ -13,6 +17,6 @@ export const Route = createFileRoute('/sign-in')({
 })
 
 function SignInPage() {
-  const { redirect: redirectTo } = Route.useSearch()
-  return <SignInForm redirectTo={redirectTo} />
+  const { redirect: redirectTo, error } = Route.useSearch()
+  return <SignInForm redirectTo={redirectTo} error={error} />
 }
