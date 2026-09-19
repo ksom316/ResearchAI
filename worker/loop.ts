@@ -1,9 +1,10 @@
-import type { JobResult } from './run-job'
+/** Anything with a `kind`; only 'idle' is meaningful to the loop. */
+export type LoopResult = { kind: string }
 
 export type LoopMode = 'continuous' | 'once' | 'drain'
 
 export type LoopDeps = {
-  runNextJob: () => Promise<JobResult>
+  runNextJob: () => Promise<LoopResult>
   pollIntervalMs: number
   /** Resolves after ms, or immediately when `signal` aborts. */
   sleep?: (ms: number, signal: AbortSignal) => Promise<void>
@@ -42,7 +43,7 @@ export async function runLoop(
   let consecutiveErrors = 0
 
   while (!signal.aborted) {
-    let result: JobResult
+    let result: LoopResult
     try {
       result = await deps.runNextJob()
       consecutiveErrors = 0

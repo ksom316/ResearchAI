@@ -10,6 +10,9 @@ export const FIELD_KEYS = [
   'concepts',
 ] as const
 
+/** The only schema version this code produces; the request RPC hard-codes the same 1. */
+export const EVIDENCE_SCHEMA_VERSION = 1
+
 export type FieldKey = (typeof FIELD_KEYS)[number]
 
 export type RoutingRule = {

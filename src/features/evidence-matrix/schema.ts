@@ -1,9 +1,14 @@
 import { z } from 'zod'
 import { FIELD_KEYS } from './fields'
 
-export const MAX_ITEMS_PER_FIELD = 12
+export const MAX_ITEMS_PER_FIELD = 3
 export const MAX_ITEM_CHARS = 500
-/** 12 items x 5 = 60, the per-field source cap of store_extraction_field. */
+/**
+ * 3 items x 5 ids = 15 sources per field, well inside store_extraction_field's cap of 60
+ * (0009 still allows up to 12 items per field; the application contract is tighter).
+ * The JSON Schema deliberately has no minItems on "items": not_reported must be [] in
+ * the same object, and a per-state rule is expressed only in Zod.
+ */
 export const MAX_EVIDENCE_IDS_PER_ITEM = 5
 
 const itemSchema = z.strictObject({
@@ -21,7 +26,7 @@ const fieldSchema = z
   })
   .refine(
     (f) => (f.state === 'extracted' ? f.items.length >= 1 : f.items.length === 0),
-    { message: 'extracted needs 1-12 items; not_reported needs none' },
+    { message: 'extracted needs 1-3 items; not_reported needs none' },
   )
 
 /** Untrusted model output: passing this does NOT make citations valid. */

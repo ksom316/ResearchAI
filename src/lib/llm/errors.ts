@@ -12,14 +12,46 @@ export type LlmErrorKind =
   | 'provider_error' // 5xx, other 4xx, or the provider could not be reached
   | 'invalid_response' // successful HTTP, but not usable structured output
 
+/** Why a response was unusable. A fixed set: never derived from model output. */
+export type LlmFailureCategory =
+  | 'truncated'
+  | 'not_json'
+  | 'not_object'
+  | 'empty'
+
+/** Numeric token counts the provider reported; a field is omitted when not supplied. */
+export type LlmDiagnosticUsage = {
+  promptTokens?: number
+  completionTokens?: number
+  totalTokens?: number
+  /** Only when the response supplied a numeric reasoning-token count. */
+  reasoningTokens?: number
+}
+
+/** Safe metadata about an unusable response: no content, only bounded identifiers/numbers. */
+export type LlmDiagnostic = {
+  category: LlmFailureCategory
+  /** The model that answered, if the provider said so. */
+  model: string | null
+  finishReason: string | null
+  usage?: LlmDiagnosticUsage
+}
+
 export class LlmError extends Error {
   readonly kind: LlmErrorKind
   readonly status: number | undefined
+  readonly diagnostic: LlmDiagnostic | undefined
 
-  constructor(kind: LlmErrorKind, message: string, status?: number) {
+  constructor(
+    kind: LlmErrorKind,
+    message: string,
+    status?: number,
+    diagnostic?: LlmDiagnostic,
+  ) {
     super(message)
     this.name = 'LlmError'
     this.kind = kind
     this.status = status
+    this.diagnostic = diagnostic
   }
 }

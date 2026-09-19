@@ -3,7 +3,13 @@ import type { FieldKey } from './fields'
 
 /** Explicit bounds: a huge thesis can never create an unbounded prompt. */
 export const MAX_EVIDENCE_ITEMS = 40
-export const MAX_EVIDENCE_CHARS = 30_000
+/**
+ * 24,000 = 6 x MAX_CHUNK_CHARS. Fields take turns picking one new chunk each, in
+ * FIELD_KEYS order, so this is the smallest budget that still guarantees the first six
+ * fields a full-size chunk each in the worst case. The seventh, concepts, is covered by
+ * whatever objective picked (abstract/introduction are routed to both).
+ */
+export const MAX_EVIDENCE_CHARS = 24_000
 /** A chunk longer than this is dropped whole, never truncated (provenance stays exact). */
 export const MAX_CHUNK_CHARS = 4_000
 

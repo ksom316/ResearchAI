@@ -1,5 +1,5 @@
 import { LlmError } from '#/lib/llm'
-import type { LlmProvider } from '#/lib/llm'
+import type { LlmProvider, ReasoningConfig } from '#/lib/llm'
 import { buildEvidencePacket } from './evidence-packet'
 import type { EvidencePacket, PaperInput } from './evidence-packet'
 import { FIELD_KEYS } from './fields'
@@ -7,7 +7,19 @@ import type { FieldKey } from './fields'
 import { buildExtractionUserMessage, EXTRACTION_SYSTEM_PROMPT } from './prompt'
 import { EXTRACTION_JSON_SCHEMA, extractionOutputSchema } from './schema'
 
+/**
+ * A response that hits this limit fails validation as "truncated" (with the served model
+ * logged), not silently. 2000 was tried and truncated a real free-router response
+ * (liquid/lfm-2.5-2.6b:free), so it is back at 3000; the prompt now asks for concise items.
+ */
 export const MAX_EXTRACTION_OUTPUT_TOKENS = 3000
+/**
+ * Extraction needs little deliberation, and an uncontrolled free reasoning model spent the
+ * whole output budget on reasoning (reasoning_tokens ~3052 of 3000, finish_reason=length).
+ * Sent per call only from here; Research Chat sends no reasoning setting. Combined with
+ * provider.require_parameters=true, routing only uses endpoints that support it.
+ */
+export const EVIDENCE_EXTRACTION_REASONING: ReasoningConfig = { effort: 'low' }
 /** paper_extraction_sources.excerpt allows at most 400 characters. */
 export const MAX_EXCERPT_CHARS = 400
 
@@ -33,6 +45,66 @@ export type ExtractionErrorCode =
   | 'invalid_output'
   | 'invalid_citation'
 
+/** Most issues / characters a diagnostic may carry. */
+const MAX_DIAGNOSTIC_ISSUES = 5
+const MAX_DIAGNOSTIC_CHARS = 300
+
+/** A provider identifier (model slug, finish reason) made log-safe and bounded. */
+const identifier = (value: string) =>
+  value.replace(/[^A-Za-z0-9_.:/@-]/g, '?').slice(0, 100)
+
+/** A token count as "name=123", only for a real non-negative integer; otherwise omitted. */
+const numeric = (name: string, value: number | undefined) =>
+  typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
+    ? `${name}=${value}`
+    : null
+
+/** A path segment or code made log-safe: schema-shaped tokens only, bounded. */
+const token = (value: unknown) =>
+  String(value)
+    .replace(/[^A-Za-z0-9_]/g, '?')
+    .slice(0, 40)
+
+/**
+ * A short, CONTENT-FREE description of a failure, for the local worker log only.
+ * Built solely from fixed categories, Zod issue paths and codes, evidence ids that
+ * already passed the E# pattern, and bounded provider identifiers. Never rejected
+ * values, raw model output, or paper/evidence text.
+ */
+export function safeDiagnostic(parts: {
+  category: string
+  issues?: readonly { path: readonly PropertyKey[]; code: string }[]
+  detail?: string
+  model?: string | null
+  finishReason?: string | null
+  usage?: {
+    promptTokens?: number
+    completionTokens?: number
+    totalTokens?: number
+    reasoningTokens?: number
+  }
+}): string {
+  const bits = [parts.category]
+  if (parts.issues && parts.issues.length > 0) {
+    const shown = parts.issues
+      .slice(0, MAX_DIAGNOSTIC_ISSUES)
+      .map((i) => `${i.path.map(token).join('.') || '(root)'} ${token(i.code)}`)
+    const more = parts.issues.length - shown.length
+    bits.push(shown.join(', ') + (more > 0 ? ` (+${more} more)` : ''))
+  }
+  if (parts.detail) bits.push(parts.detail)
+  const meta = [
+    parts.model ? `model=${identifier(parts.model)}` : null,
+    parts.finishReason ? `finish_reason=${identifier(parts.finishReason)}` : null,
+    numeric('prompt_tokens', parts.usage?.promptTokens),
+    numeric('completion_tokens', parts.usage?.completionTokens),
+    numeric('total_tokens', parts.usage?.totalTokens),
+    numeric('reasoning_tokens', parts.usage?.reasoningTokens),
+  ].filter(Boolean)
+  const text = bits.join(' ') + (meta.length > 0 ? `; ${meta.join('; ')}` : '')
+  return text.slice(0, MAX_DIAGNOSTIC_CHARS)
+}
+
 export type ExtractionOutcome =
   | {
       ok: true
@@ -42,7 +114,7 @@ export type ExtractionOutcome =
       fields: NormalizedField[]
       packet: EvidencePacket
     }
-  | { ok: false; error: ExtractionErrorCode }
+  | { ok: false; error: ExtractionErrorCode; diagnostic?: string }
 
 /**
  * Deterministic verbatim excerpt: the start of the chunk (leading whitespace skipped),
@@ -71,7 +143,7 @@ const notReported = (fieldKey: FieldKey): NormalizedField => ({
 
 type Validation =
   | { ok: true; fields: NormalizedField[] }
-  | { ok: false; error: ExtractionErrorCode }
+  | { ok: false; error: ExtractionErrorCode; diagnostic?: string }
 
 /**
  * Zod-parse, then validate every citation against the packet. Nothing is repaired:
@@ -83,7 +155,16 @@ export function validateExtraction(
   packet: EvidencePacket,
 ): Validation {
   const parsed = extractionOutputSchema.safeParse(data)
-  if (!parsed.success) return { ok: false, error: 'invalid_output' }
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: 'invalid_output',
+      diagnostic: safeDiagnostic({
+        category: 'schema_validation',
+        issues: parsed.error.issues,
+      }),
+    }
+  }
 
   const fields: NormalizedField[] = []
   for (const key of FIELD_KEYS) {
@@ -96,13 +177,24 @@ export function validateExtraction(
     for (const [itemIndex, item] of field.items.entries()) {
       for (const [ord, id] of item.evidence_ids.entries()) {
         const evidence = packet.byId.get(id)
-        if (
-          !evidence ||
-          !evidence.fields.includes(key) ||
-          item.evidence_ids.indexOf(id) !== ord
-        ) {
-          return { ok: false, error: 'invalid_citation' }
+        const reason = !evidence
+          ? 'unknown_id'
+          : !evidence.fields.includes(key)
+            ? 'not_eligible_for_field'
+            : item.evidence_ids.indexOf(id) !== ord
+              ? 'duplicate_id'
+              : null
+        if (reason !== null) {
+          return {
+            ok: false,
+            error: 'invalid_citation',
+            diagnostic: safeDiagnostic({
+              category: 'citation',
+              detail: `field=${key} item=${itemIndex} ${reason}`,
+            }),
+          }
         }
+        if (!evidence) continue
         sources.push({
           item_index: itemIndex,
           ord,
@@ -160,17 +252,47 @@ export async function extractEvidenceMatrix(
       ),
       schema: EXTRACTION_JSON_SCHEMA,
       maxTokens: MAX_EXTRACTION_OUTPUT_TOKENS,
+      reasoning: EVIDENCE_EXTRACTION_REASONING,
       signal: deps.signal,
     })
   } catch (error) {
     if (error instanceof LlmError && error.kind === 'invalid_response') {
-      return { ok: false, error: 'invalid_output' }
+      return {
+        ok: false,
+        error: 'invalid_output',
+        diagnostic: safeDiagnostic({
+          category: error.diagnostic?.category ?? 'invalid_response',
+          model: error.diagnostic?.model,
+          finishReason: error.diagnostic?.finishReason,
+          usage: error.diagnostic?.usage,
+        }),
+      }
     }
-    return { ok: false, error: 'llm_unavailable' }
+    return {
+      ok: false,
+      error: 'llm_unavailable',
+      diagnostic:
+        error instanceof LlmError ? safeDiagnostic({ category: `llm_${error.kind}` }) : undefined,
+    }
   }
 
   const validated = validateExtraction(result.data, packet)
-  if (!validated.ok) return validated
+  if (!validated.ok) {
+    // keep the served model / finish reason (bounded identifiers) next to the reason
+    const meta = safeDiagnostic({
+      category: validated.diagnostic ?? 'validation',
+      model: result.model,
+      finishReason: result.finishReason,
+      usage: result.usage
+        ? {
+            promptTokens: result.usage.inputTokens ?? undefined,
+            completionTokens: result.usage.outputTokens ?? undefined,
+            totalTokens: result.usage.totalTokens ?? undefined,
+          }
+        : undefined,
+    })
+    return { ...validated, diagnostic: meta }
+  }
   return {
     ok: true,
     provider: result.provider,

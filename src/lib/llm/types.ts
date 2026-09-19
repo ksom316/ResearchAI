@@ -13,12 +13,22 @@ export type JsonSchemaSpec = {
   schema: Record<string, unknown>
 }
 
+/**
+ * Optional, per-call reasoning control for reasoning-capable models. Omitted by default:
+ * a request without it is sent exactly as before. Support varies by model/provider.
+ */
+export type ReasoningConfig = {
+  effort: 'low' | 'medium' | 'high'
+}
+
 export type StructuredRequest = {
   system: string
   user: string
   schema: JsonSchemaSpec
   /** Upper bound on generated tokens. */
   maxTokens: number
+  /** Only sent when set. Never set by callers that do not need it. */
+  reasoning?: ReasoningConfig
   signal?: AbortSignal
 }
 
@@ -38,6 +48,8 @@ export type StructuredResult = {
   usage: LlmUsage | null
   provider: string
   model: string
+  /** Provider-reported finish reason (bounded identifier), when available. */
+  finishReason?: string | null
 }
 
 export interface LlmProvider {

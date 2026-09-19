@@ -1,4 +1,5 @@
 import { LlmError } from './errors'
+import type { LlmDiagnosticUsage, LlmFailureCategory } from './errors'
 import type {
   LlmProvider,
   LlmUsage,
@@ -38,6 +39,15 @@ const isStructuredMode = (value: string): value is StructuredMode =>
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
+
+/**
+ * A provider-supplied identifier (model slug, finish reason) that is safe to log:
+ * short and restricted to slug characters, otherwise null.
+ */
+const safeIdentifier = (value: unknown): string | null =>
+  typeof value === 'string' && /^[A-Za-z0-9_.:/@-]{1,100}$/.test(value)
+    ? value
+    : null
 
 const count = (value: unknown) =>
   typeof value === 'number' && Number.isFinite(value) && value >= 0
@@ -128,6 +138,10 @@ export class OpenRouterProvider implements LlmProvider {
             max_tokens: request.maxTokens,
             stream: false,
             ...this.structureParameters(request),
+            // Only when the caller asked for it; otherwise the body is unchanged.
+            ...(request.reasoning
+              ? { reasoning: { effort: request.reasoning.effort } }
+              : {}),
           }),
           signal: controller.signal,
         })
@@ -215,14 +229,27 @@ export class OpenRouterProvider implements LlmProvider {
   }
 
   private parse(body: string): StructuredResult {
-    const bad = (message: string) => new LlmError('invalid_response', message)
+    let servedModel: string | null = null
+    let finishReason: string | null = null
+    const extra: { usage?: LlmDiagnosticUsage } = {}
+    const bad = (message: string, category: LlmFailureCategory) =>
+      new LlmError('invalid_response', message, undefined, {
+        category,
+        model: servedModel,
+        finishReason,
+        ...(extra.usage ? { usage: extra.usage } : {}),
+      })
     let json: unknown
     try {
       json = JSON.parse(body)
     } catch {
-      throw bad('OpenRouter returned a response that is not valid JSON')
+      throw bad('OpenRouter returned a response that is not valid JSON', 'not_json')
     }
-    if (!isRecord(json)) throw bad('OpenRouter response is not an object')
+    if (!isRecord(json)) {
+      throw bad('OpenRouter response is not an object', 'not_object')
+    }
+    servedModel = safeIdentifier(json.model)
+    extra.usage = this.diagnosticUsage(json.usage)
     // OpenRouter can report an upstream failure inside a 200 response.
     if (json.error !== undefined) {
       throw new LlmError(
@@ -232,30 +259,54 @@ export class OpenRouterProvider implements LlmProvider {
     }
     const choice = Array.isArray(json.choices) ? json.choices[0] : undefined
     if (!isRecord(choice) || !isRecord(choice.message)) {
-      throw bad('OpenRouter response has no message')
+      throw bad('OpenRouter response has no message', 'empty')
     }
+    finishReason = safeIdentifier(choice.finish_reason)
     if (choice.finish_reason === 'length') {
-      throw bad('The model output was cut off (token limit)')
+      throw bad('The model output was cut off (token limit)', 'truncated')
     }
     const content = choice.message.content
     if (typeof content !== 'string' || content.trim() === '') {
-      throw bad('OpenRouter response has no message content')
+      throw bad('OpenRouter response has no message content', 'empty')
     }
     let data: unknown
     try {
       data = JSON.parse(content)
     } catch {
       // Deliberately no markdown-fence stripping or repair: malformed is malformed.
-      throw bad('The model did not return valid JSON')
+      throw bad('The model did not return valid JSON', 'not_json')
     }
-    if (!isRecord(data)) throw bad('The model did not return a JSON object')
+    if (!isRecord(data)) throw bad('The model did not return a JSON object', 'not_object')
 
     return {
       data,
       usage: this.usage(json.usage),
       provider: 'openrouter',
       model: typeof json.model === 'string' ? json.model : this.model,
+      finishReason,
     }
+  }
+
+  /**
+   * Numeric token counts only, for failure diagnostics. Reasoning tokens are reported
+   * only from the OpenAI-style completion_tokens_details.reasoning_tokens when it is a
+   * real number; nothing is estimated and no content is read.
+   */
+  private diagnosticUsage(raw: unknown): LlmDiagnosticUsage | undefined {
+    if (!isRecord(raw)) return undefined
+    const out: LlmDiagnosticUsage = {}
+    const prompt = count(raw.prompt_tokens)
+    const completion = count(raw.completion_tokens)
+    const total = count(raw.total_tokens)
+    const details = isRecord(raw.completion_tokens_details)
+      ? raw.completion_tokens_details
+      : null
+    const reasoning = details ? count(details.reasoning_tokens) : null
+    if (prompt !== null) out.promptTokens = prompt
+    if (completion !== null) out.completionTokens = completion
+    if (total !== null) out.totalTokens = total
+    if (reasoning !== null) out.reasoningTokens = reasoning
+    return Object.keys(out).length > 0 ? out : undefined
   }
 
   private usage(raw: unknown): LlmUsage | null {

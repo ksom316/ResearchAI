@@ -666,9 +666,11 @@ describe('chat boundaries', () => {
   it('leaves Phase 4 retrieval migrations untouched', () => {
     const migrations = readdirSync(join(root, 'supabase/migrations')).sort()
     // 0008 (retrieval) is followed only by the Phase 6A evidence-matrix migration.
-    expect(migrations.slice(-2)).toEqual([
+    expect(migrations.slice(-4)).toEqual([
       '0008_semantic_search.sql',
       '0009_evidence_matrix_foundation.sql',
+      '0010_evidence_matrix_worker.sql',
+      '0011_evidence_matrix_worker_fix.sql',
     ])
   })
 })
@@ -730,5 +732,18 @@ describe('json_object mode keeps Phase 5C validation authoritative', () => {
         error: 'answer_unavailable',
       })
     }
+  })
+})
+
+describe('Research Chat sends no reasoning configuration', () => {
+  it('its structured request carries no reasoning key', async () => {
+    const h = harness()
+    const outcome = await h.run()
+    expect(outcome.ok).toBe(true)
+    expect(h.generate).toHaveBeenCalledTimes(1)
+    const req = h.generate.mock.calls[0]?.[0]
+    if (!req) throw new Error('no structured request was made')
+    expect(req).not.toHaveProperty('reasoning')
+    expect(Object.keys(req).sort()).toEqual(['maxTokens', 'schema', 'system', 'user'])
   })
 })

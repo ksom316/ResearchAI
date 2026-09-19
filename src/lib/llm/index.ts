@@ -1,5 +1,10 @@
 export { LlmError } from './errors'
-export type { LlmErrorKind } from './errors'
+export type {
+  LlmDiagnostic,
+  LlmDiagnosticUsage,
+  LlmErrorKind,
+  LlmFailureCategory,
+} from './errors'
 export {
   createOpenRouterProvider,
   DEFAULT_TEMPERATURE,
@@ -11,6 +16,7 @@ export type { OpenRouterOptions, StructuredMode } from './openrouter'
 export type {
   JsonSchemaSpec,
   LlmProvider,
+  ReasoningConfig,
   LlmUsage,
   StructuredRequest,
   StructuredResult,
