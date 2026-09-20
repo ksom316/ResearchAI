@@ -20,7 +20,7 @@ export const FIELD_LABELS: Record<FieldKey, string> = {
   dataset: 'Dataset',
   findings: 'Findings',
   limitations: 'Limitations',
-  future_work: 'Future Work',
+  future_work: 'Future work',
   concepts: 'Concepts',
 }
 

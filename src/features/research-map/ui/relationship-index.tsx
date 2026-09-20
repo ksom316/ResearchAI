@@ -1,4 +1,5 @@
 import { Button } from '#/components/ui/button'
+import { ChevronDown } from 'lucide-react'
 import { makeEvidenceSelection, TERM_KIND_LABELS } from '../view-model'
 import type { EvidenceSelection, TermIndexEntry } from '../view-model'
 import type { TermKind } from '../types'
@@ -39,11 +40,15 @@ export function RelationshipIndex({
               <ul className="mt-2 space-y-2">
                 {forKind.map((entry) => (
                   <li key={entry.id}>
-                    <details className="rounded-md border px-3 py-2">
+                    <details className="group rounded-md border px-3 py-2">
                       <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-sm font-medium">
-                        <span className="break-words">{entry.label}</span>
-                        <span className="text-xs font-normal text-muted-foreground">
+                        <span className="min-w-0 break-words">{entry.label}</span>
+                        <span className="flex shrink-0 items-center gap-1 text-xs font-normal text-muted-foreground">
                           {entry.papers.length} papers
+                          <ChevronDown
+                            className="size-3.5 transition-transform group-open:rotate-180"
+                            aria-hidden="true"
+                          />
                         </span>
                       </summary>
                       <ul className="mt-2 space-y-1.5">
@@ -52,7 +57,7 @@ export function RelationshipIndex({
                             key={p.paperId}
                             className="flex flex-wrap items-center justify-between gap-2 text-sm"
                           >
-                            <span className="break-words">
+                            <span className="min-w-0 break-words">
                               {p.title}
                               {p.isStale && (
                                 <span className="ml-1.5 text-xs text-amber-600 dark:text-amber-500">
@@ -73,6 +78,7 @@ export function RelationshipIndex({
                                     entry.fieldKey,
                                     entry.label,
                                     p.evidence,
+                                    p.isStale,
                                   ),
                                 )
                               }

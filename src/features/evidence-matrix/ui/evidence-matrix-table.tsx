@@ -61,7 +61,7 @@ export function EvidenceMatrixTable({
                 className="sticky left-0 z-10 w-64 min-w-64 border-r border-b bg-card px-4 py-3 align-top font-normal"
               >
                 <div className="space-y-2">
-                  <div className="text-sm font-medium break-words">
+                  <div className="min-w-0 text-sm font-medium break-words">
                     {renderTitle(row.paper)}
                   </div>
                   <PaperExtractionStatus

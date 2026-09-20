@@ -27,6 +27,21 @@ export type ExtractionStatusView = {
   tone: 'muted' | 'active' | 'success' | 'warning' | 'danger'
 }
 
+/** Canonical user-facing wording for extraction states across intelligence views. */
+export const EXTRACTION_STATUS_LABELS: Record<ExtractionStatusKey, string> = {
+  waiting: 'Waiting for processing',
+  not_extracted: 'Not extracted',
+  queued: 'Queued',
+  extracting: 'Extracting…',
+  extracted: 'Extracted',
+  out_of_date: 'Out of date',
+  partial: 'Partial',
+  failed: 'Extraction failed',
+}
+
+export const extractionStatusLabel = (status: ExtractionStatusKey): string =>
+  EXTRACTION_STATUS_LABELS[status]
+
 const ACTION_LABELS: Record<ExtractionAction, string> = {
   extract: 'Extract',
   update: 'Update',
@@ -41,24 +56,24 @@ export function describeExtraction(
   overview: ExtractionOverview | undefined,
 ): ExtractionStatusView {
   if (paperStatus !== 'ready') {
-    return { key: 'waiting', label: 'Waiting for processing', action: null, active: false, tone: 'muted' }
+    return { key: 'waiting', label: extractionStatusLabel('waiting'), action: null, active: false, tone: 'muted' }
   }
   if (!overview) {
-    return { key: 'not_extracted', label: 'Not extracted', action: 'extract', active: false, tone: 'muted' }
+    return { key: 'not_extracted', label: extractionStatusLabel('not_extracted'), action: 'extract', active: false, tone: 'muted' }
   }
   switch (overview.status) {
     case 'pending':
-      return { key: 'queued', label: 'Queued', action: null, active: true, tone: 'active' }
+      return { key: 'queued', label: extractionStatusLabel('queued'), action: null, active: true, tone: 'active' }
     case 'running':
-      return { key: 'extracting', label: 'Extracting…', action: null, active: true, tone: 'active' }
+      return { key: 'extracting', label: extractionStatusLabel('extracting'), action: null, active: true, tone: 'active' }
     case 'complete':
       return overview.isStale
-        ? { key: 'out_of_date', label: 'Out of date', action: 'update', active: false, tone: 'warning' }
-        : { key: 'extracted', label: 'Extracted', action: null, active: false, tone: 'success' }
+        ? { key: 'out_of_date', label: extractionStatusLabel('out_of_date'), action: 'update', active: false, tone: 'warning' }
+        : { key: 'extracted', label: extractionStatusLabel('extracted'), action: null, active: false, tone: 'success' }
     case 'partial':
-      return { key: 'partial', label: 'Partial', action: 'retry', active: false, tone: 'warning' }
+      return { key: 'partial', label: extractionStatusLabel('partial'), action: 'retry', active: false, tone: 'warning' }
     case 'failed':
-      return { key: 'failed', label: 'Extraction failed', action: 'retry', active: false, tone: 'danger' }
+      return { key: 'failed', label: extractionStatusLabel('failed'), action: 'retry', active: false, tone: 'danger' }
   }
 }
 

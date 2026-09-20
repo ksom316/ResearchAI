@@ -231,7 +231,9 @@ export function deriveResearchGapsState(queries: {
   const usablePapers = map.nodes.filter(
     (node): node is PaperNode =>
       node.type === 'paper' &&
-      (node.statusKey === 'extracted' || node.statusKey === 'out_of_date'),
+      (node.statusKey === 'extracted' ||
+        node.statusKey === 'out_of_date' ||
+        node.statusKey === 'partial'),
   ).length
   if (usablePapers < 2) return { kind: 'not_ready' }
   return {

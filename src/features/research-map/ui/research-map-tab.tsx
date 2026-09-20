@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { Network } from 'lucide-react'
@@ -33,7 +33,7 @@ const paperLink = (paper: Paper) => (
   <Link
     to="/papers/$paperId"
     params={{ paperId: paper.id }}
-    className="text-foreground no-underline hover:underline"
+    className="break-words text-foreground no-underline hover:underline"
   >
     {paper.title}
   </Link>
@@ -62,7 +62,20 @@ export function ResearchMapTab({ projectId }: { projectId: string }) {
   const [viewMode, setViewMode] = useState<ViewMode>('graph')
   const [showFindings, setShowFindings] = useState(false)
 
-  const state = deriveResearchMapState({ papers, overviews, fields })
+  const state = useMemo(
+    () => deriveResearchMapState({ papers, overviews, fields }),
+    [
+      papers.data,
+      papers.error,
+      papers.isPending,
+      overviews.data,
+      overviews.error,
+      overviews.isPending,
+      fields.data,
+      fields.error,
+      fields.isPending,
+    ],
+  )
 
   switch (state.kind) {
     case 'loading':

@@ -18,7 +18,7 @@ import {
   summarizeMatrix,
 } from '../matrix-model'
 import { evidenceKeys, EXTRACTION_REFRESH_MS } from '../queries'
-import { describeExtraction } from '../status'
+import { describeExtraction, extractionStatusLabel } from '../status'
 import type { ExtractionField, ExtractionOverview, FieldKey } from '../types'
 import { EvidenceMatrixCards } from './evidence-matrix-cards'
 import { EvidenceMatrixTab, fieldsQueryFor } from './evidence-matrix-tab'
@@ -138,6 +138,14 @@ describe('buildMatrixRows: the in-memory join', () => {
     const rows = buildMatrixRows([paper(P1)], [overview(P2)], [field(P2, 'objective', ['x'])])
     expect(rows).toHaveLength(1)
     expect(rows[0].overview).toBeUndefined()
+  })
+})
+
+describe('canonical extraction status labels', () => {
+  it('keeps shared intelligence views on the same human-readable wording', () => {
+    expect(extractionStatusLabel('extracting')).toBe('Extracting…')
+    expect(extractionStatusLabel('out_of_date')).toBe('Out of date')
+    expect(extractionStatusLabel('failed')).toBe('Extraction failed')
   })
 })
 
@@ -397,7 +405,7 @@ describe('EvidenceMatrixTable (desktop)', () => {
 
   it('has the Paper column then the seven fields in order, as column headers', () => {
     const headers = [...out().matchAll(/<th scope="col"[^>]*>([^<]*)<\/th>/g)].map((m) => m[1])
-    expect(headers).toEqual(['Paper', 'Objective', 'Methodology', 'Dataset', 'Findings', 'Limitations', 'Future Work', 'Concepts'])
+    expect(headers).toEqual(['Paper', 'Objective', 'Methodology', 'Dataset', 'Findings', 'Limitations', 'Future work', 'Concepts'])
     expect(headers.slice(1)).toEqual(FIELD_KEYS.map((k) => FIELD_LABELS[k]))
   })
 

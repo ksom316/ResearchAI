@@ -35,7 +35,7 @@ export function ClaimDetailBody({
 
   return (
     <div className="space-y-5">
-      <header className="space-y-2">
+      <header className="space-y-2 pr-6">
         <Title className="text-lg font-semibold">{selected.fieldLabel}</Title>
         <Description className="text-sm break-words text-muted-foreground">
           {selected.paperTitle}

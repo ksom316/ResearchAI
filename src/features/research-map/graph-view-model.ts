@@ -1,10 +1,11 @@
 import type { TermKind } from './types'
+import { extractionStatusLabel } from '#/features/evidence-matrix/status'
 import type {
   EvidenceSelection,
   PaperSummaryRow,
   TermIndexEntry,
 } from './view-model'
-import { makeEvidenceSelection, PAPER_STATUS_LABEL } from './view-model'
+import { makeEvidenceSelection } from './view-model'
 
 /**
  * Converts the ALREADY-FILTERED 6B.3 view-model (TermIndexEntry[] / PaperSummaryRow[])
@@ -106,7 +107,7 @@ export function buildGraphViewModel(
       id: paperNodeId(row.paperId),
       kind: 'paper',
       position: { x: paperX(i), y: PAPER_Y },
-      data: { label: row.title, isStale: row.isStale, statusLabel: PAPER_STATUS_LABEL[row.statusKey] },
+      data: { label: row.title, isStale: row.isStale, statusLabel: extractionStatusLabel(row.statusKey) },
     })
   })
 
@@ -126,7 +127,7 @@ export function buildGraphViewModel(
         kind: entry.kind,
         source: nodeId,
         target: paperNodeId(p.paperId),
-        evidence: makeEvidenceSelection(p.paperId, p.title, entry.fieldKey, entry.label, p.evidence),
+        evidence: makeEvidenceSelection(p.paperId, p.title, entry.fieldKey, entry.label, p.evidence, p.isStale),
       })
     }
   })
@@ -148,7 +149,7 @@ export function buildGraphViewModel(
             isStale: row.isStale,
             evidence: makeEvidenceSelection(row.paperId, row.title, 'findings', `Finding ${i + 1}`, [
               { itemIndex: f.itemIndex, matchedPhrase: null, claimText: f.text },
-            ]),
+            ], row.isStale),
           },
         })
         edges.push({
@@ -158,7 +159,7 @@ export function buildGraphViewModel(
           target: id,
           evidence: makeEvidenceSelection(row.paperId, row.title, 'findings', `Finding ${i + 1}`, [
             { itemIndex: f.itemIndex, matchedPhrase: null, claimText: f.text },
-          ]),
+          ], row.isStale),
         })
       })
     }

@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react'
 import { Button } from '#/components/ui/button'
 import { Card, CardContent } from '#/components/ui/card'
-import { makeEvidenceSelection, PAPER_STATUS_LABEL } from '../view-model'
+import { extractionStatusLabel } from '#/features/evidence-matrix/status'
+import { makeEvidenceSelection } from '../view-model'
 import type { EvidenceSelection, PaperSummaryRow, SharedTermRef } from '../view-model'
 
 function RelationshipRow({
@@ -10,6 +11,7 @@ function RelationshipRow({
   fieldKey,
   paperId,
   paperTitle,
+  isStale,
   onViewEvidence,
 }: {
   label: string
@@ -17,6 +19,7 @@ function RelationshipRow({
   fieldKey: EvidenceSelection['fieldKey']
   paperId: string
   paperTitle: string
+  isStale: boolean
   onViewEvidence: (selection: EvidenceSelection) => void
 }) {
   if (refs.length === 0) return null
@@ -29,10 +32,18 @@ function RelationshipRow({
           type="button"
           size="xs"
           variant="outline"
+          className="h-auto max-w-full text-left whitespace-normal break-words"
           aria-label={`View evidence for ${ref.label} in ${paperTitle}`}
           onClick={() =>
             onViewEvidence(
-              makeEvidenceSelection(paperId, paperTitle, fieldKey, ref.label, ref.evidence),
+              makeEvidenceSelection(
+                paperId,
+                paperTitle,
+                fieldKey,
+                ref.label,
+                ref.evidence,
+                isStale,
+              ),
             )
           }
         >
@@ -76,11 +87,11 @@ export function PaperRelationshipList({
             <Card className="gap-3 py-4">
               <CardContent className="space-y-2.5 px-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="text-sm font-medium break-words">
+                  <span className="min-w-0 max-w-full text-sm font-medium break-words [&_a]:break-words">
                     {renderTitle(row)}
                   </span>
                   <span className="text-xs text-muted-foreground">
-                    {PAPER_STATUS_LABEL[row.statusKey]}
+                    {extractionStatusLabel(row.statusKey)}
                   </span>
                 </div>
                 {isolated ? (
@@ -95,6 +106,7 @@ export function PaperRelationshipList({
                       fieldKey="concepts"
                       paperId={row.paperId}
                       paperTitle={row.title}
+                      isStale={row.isStale}
                       onViewEvidence={onViewEvidence}
                     />
                     <RelationshipRow
@@ -103,6 +115,7 @@ export function PaperRelationshipList({
                       fieldKey="methodology"
                       paperId={row.paperId}
                       paperTitle={row.title}
+                      isStale={row.isStale}
                       onViewEvidence={onViewEvidence}
                     />
                     <RelationshipRow
@@ -111,6 +124,7 @@ export function PaperRelationshipList({
                       fieldKey="dataset"
                       paperId={row.paperId}
                       paperTitle={row.title}
+                      isStale={row.isStale}
                       onViewEvidence={onViewEvidence}
                     />
                     {row.findings.length > 0 && (
@@ -138,6 +152,7 @@ export function PaperRelationshipList({
                                       'findings',
                                       `Finding ${i + 1}`,
                                       [{ itemIndex: f.itemIndex, matchedPhrase: null, claimText: f.text }],
+                                      row.isStale,
                                     ),
                                   )
                                 }

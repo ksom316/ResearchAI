@@ -238,6 +238,29 @@ describe('Research Gap view model', () => {
     ).toEqual({ kind: 'not_ready' })
   })
 
+  it('treats two partial extractions as usable intelligence without hiding valid derived results', () => {
+    const state = deriveResearchGapsState({
+      papers: {
+        data: [
+          { id: END, title: 'End', status: 'ready' as const },
+          { id: SURVEY, title: 'Survey', status: 'ready' as const },
+        ],
+        error: null,
+        isPending: false,
+      },
+      overviews: {
+        data: [
+          { ...overview(END), status: 'partial' as const },
+          { ...overview(SURVEY), status: 'partial' as const },
+        ],
+        error: null,
+        isPending: false,
+      },
+      fields: { data: [], error: null, isPending: false },
+    })
+    expect(state.kind).toBe('ready')
+  })
+
   it('summarizes unique papers and evidence claims', () => {
     const duplicateRef = candidate().evidenceRefs[0]
     expect(
@@ -331,7 +354,7 @@ describe('Research Gap view model', () => {
         claims: [
           {
             fieldKey: 'future_work',
-            fieldLabel: 'Future Work',
+            fieldLabel: 'Future work',
             itemIndex: 1,
             text: 'Persisted E1',
           },
@@ -343,7 +366,7 @@ describe('Research Gap view model', () => {
         claims: [
           {
             fieldKey: 'future_work',
-            fieldLabel: 'Future Work',
+            fieldLabel: 'Future work',
             itemIndex: 0,
             text: 'Persisted S0',
           },

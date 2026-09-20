@@ -246,10 +246,18 @@ describe('makeEvidenceSelection', () => {
     expect(makeEvidenceSelection('p', 'Title', 'findings', 'Finding 1', [{ itemIndex: 0, matchedPhrase: null, claimText: 'x' }])).toEqual({
       paperId: 'p',
       paperTitle: 'Title',
+      isStale: false,
       fieldKey: 'findings',
       contextLabel: 'Finding 1',
       items: [{ itemIndex: 0, matchedPhrase: null, claimText: 'x' }],
     })
+  })
+
+  it('preserves stale state for provenance views', () => {
+    expect(
+      makeEvidenceSelection('p', 'Title', 'concepts', 'BERT', [], true)
+        .isStale,
+    ).toBe(true)
   })
 })
 

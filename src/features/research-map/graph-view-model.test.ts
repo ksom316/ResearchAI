@@ -308,9 +308,9 @@ describe('buildGraphViewModel: malformed/missing data safety', () => {
 
 describe('neighborhoodOf', () => {
   const edges: GraphEdge[] = [
-    { id: 'e1', kind: 'concept', source: 'term-a', target: 'paper-1', evidence: { paperId: 'p1', paperTitle: 'P1', fieldKey: 'concepts', contextLabel: 'A', items: [] } },
-    { id: 'e2', kind: 'concept', source: 'term-a', target: 'paper-2', evidence: { paperId: 'p2', paperTitle: 'P2', fieldKey: 'concepts', contextLabel: 'A', items: [] } },
-    { id: 'e3', kind: 'methodology', source: 'term-b', target: 'paper-2', evidence: { paperId: 'p2', paperTitle: 'P2', fieldKey: 'methodology', contextLabel: 'B', items: [] } },
+    { id: 'e1', kind: 'concept', source: 'term-a', target: 'paper-1', evidence: { paperId: 'p1', paperTitle: 'P1', isStale: false, fieldKey: 'concepts', contextLabel: 'A', items: [] } },
+    { id: 'e2', kind: 'concept', source: 'term-a', target: 'paper-2', evidence: { paperId: 'p2', paperTitle: 'P2', isStale: false, fieldKey: 'concepts', contextLabel: 'A', items: [] } },
+    { id: 'e3', kind: 'methodology', source: 'term-b', target: 'paper-2', evidence: { paperId: 'p2', paperTitle: 'P2', isStale: false, fieldKey: 'methodology', contextLabel: 'B', items: [] } },
   ]
 
   it('selecting a term highlights every paper it connects to, and nothing further away', () => {

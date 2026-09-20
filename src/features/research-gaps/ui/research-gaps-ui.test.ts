@@ -52,6 +52,7 @@ describe('Research Gaps UI foundation', () => {
       'utf8',
     )
     expect(tabs).toContain("value: 'research-gaps', label: 'Research Gaps'")
+    expect(tabs).toContain("value: 'evidence', label: 'Evidence Matrix'")
     expect(workspace).toContain('<TabsContent value="research-gaps"')
     expect(workspace).toContain(
       '<ResearchGapsTab key={project.id} projectId={project.id} />',
@@ -59,6 +60,7 @@ describe('Research Gaps UI foundation', () => {
     expect(workspace).toContain('sm:overflow-x-auto')
     expect(workspace).toContain('sm:flex-none')
     expect(workspace).toContain('grid-cols-3')
+    expect(workspace).toContain('aria-label="Project workspace"')
   })
 
   it('keeps cards and evidence layout mobile-safe and provenance lazy', () => {

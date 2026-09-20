@@ -1,6 +1,7 @@
+import type { ElementType } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
-import { Loader2 } from 'lucide-react'
+import { AlertTriangle, Loader2 } from 'lucide-react'
 import { QueryError } from '#/components/query-error'
 import { Button } from '#/components/ui/button'
 import {
@@ -42,23 +43,32 @@ export function RelationshipEvidenceSheet({
     >
       <SheetContent side="right" className="w-full gap-0 overflow-y-auto p-6 sm:max-w-xl">
         {selected && (
-          <Body selected={selected} sources={sources.data} error={sources.error} onRetry={() => void sources.refetch()} />
+          <RelationshipEvidenceBody
+            selected={selected}
+            sources={sources.data}
+            error={sources.error}
+            onRetry={() => void sources.refetch()}
+          />
         )}
       </SheetContent>
     </Sheet>
   )
 }
 
-function Body({
+export function RelationshipEvidenceBody({
   selected,
   sources,
   error,
   onRetry,
+  Title = SheetTitle,
+  Description = SheetDescription,
 }: {
   selected: EvidenceSelection
   sources: readonly ExtractionSource[] | undefined
   error: Error | null
   onRetry: () => void
+  Title?: ElementType
+  Description?: ElementType
 }) {
   const loading = sources === undefined && !error
   const maxIndex = Math.max(0, ...selected.items.map((i) => i.itemIndex))
@@ -70,14 +80,27 @@ function Body({
 
   return (
     <div className="space-y-5">
-      <header className="space-y-2">
-        <SheetTitle className="text-lg font-semibold">
+      <header className="space-y-2 pr-6">
+        <Title className="text-lg font-semibold">
           {selected.contextLabel}
-        </SheetTitle>
-        <SheetDescription className="text-sm break-words text-muted-foreground">
+        </Title>
+        <Description className="text-sm break-words text-muted-foreground">
           {selected.paperTitle}
-        </SheetDescription>
+        </Description>
       </header>
+
+      {selected.isStale && (
+        <p
+          role="note"
+          className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-sm"
+        >
+          <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+          <span>
+            <strong>Out of date.</strong> This relationship uses evidence from an
+            older paper-processing generation. It remains visible for review.
+          </span>
+        </p>
+      )}
 
       {error && <QueryError error={error} onRetry={onRetry} />}
       {loading && (

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { FileSearch, Lightbulb } from 'lucide-react'
@@ -46,7 +46,20 @@ export function ResearchGapsTab({ projectId }: { projectId: string }) {
   const [typeFilter, setTypeFilter] = useState<GapTypeFilter>('all')
   const [statusFilter, setStatusFilter] = useState<GapStatusFilter>('all')
   const [selection, setSelection] = useState<GapEvidenceSelection | null>(null)
-  const state = deriveResearchGapsState({ papers, overviews, fields })
+  const state = useMemo(
+    () => deriveResearchGapsState({ papers, overviews, fields }),
+    [
+      papers.data,
+      papers.error,
+      papers.isPending,
+      overviews.data,
+      overviews.error,
+      overviews.isPending,
+      fields.data,
+      fields.error,
+      fields.isPending,
+    ],
+  )
 
   switch (state.kind) {
     case 'loading':

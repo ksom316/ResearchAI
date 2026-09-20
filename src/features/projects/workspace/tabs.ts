@@ -13,7 +13,7 @@ export const WORKSPACE_TABS = [
   { value: 'overview', label: 'Overview', icon: LayoutList },
   { value: 'papers', label: 'Papers', icon: FileText },
   { value: 'ai-research', label: 'Research Chat', icon: Sparkles },
-  { value: 'evidence', label: 'Evidence', icon: Quote },
+  { value: 'evidence', label: 'Evidence Matrix', icon: Quote },
   { value: 'research-map', label: 'Research Map', icon: Network },
   { value: 'research-gaps', label: 'Research Gaps', icon: Lightbulb },
   { value: 'comparisons', label: 'Comparisons', icon: GitCompare },

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { FileText } from 'lucide-react'
@@ -32,7 +32,7 @@ const paperLink = (paper: Paper) => (
   <Link
     to="/papers/$paperId"
     params={{ paperId: paper.id }}
-    className="text-foreground no-underline hover:underline"
+    className="break-words text-foreground no-underline hover:underline"
   >
     {paper.title}
   </Link>
@@ -62,7 +62,20 @@ export function EvidenceMatrixTab({ projectId }: { projectId: string }) {
       setPendingIds,
     )
 
-  const state = deriveMatrixState({ papers, overviews, fields })
+  const state = useMemo(
+    () => deriveMatrixState({ papers, overviews, fields }),
+    [
+      papers.data,
+      papers.error,
+      papers.isPending,
+      overviews.data,
+      overviews.error,
+      overviews.isPending,
+      fields.data,
+      fields.error,
+      fields.isPending,
+    ],
+  )
 
   switch (state.kind) {
     case 'loading':

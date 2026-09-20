@@ -17,6 +17,7 @@ import {
 } from '../view-model'
 import type { PaperSummaryRow } from '../view-model'
 import { PaperRelationshipList } from './paper-relationship-list'
+import { RelationshipEvidenceBody } from './relationship-evidence-sheet'
 import { RelationshipIndex } from './relationship-index'
 import { ResearchMapFilters } from './research-map-filters'
 import { ResearchMapSummaryView } from './research-map-summary'
@@ -229,6 +230,37 @@ describe('PaperRelationshipList', () => {
   })
 })
 
+describe('RelationshipEvidenceBody', () => {
+  it('shows a textual stale warning without hiding the persisted claim', () => {
+    const out = html(
+      createElement(RelationshipEvidenceBody, {
+        selected: {
+          paperId: P1,
+          paperTitle: 'Stale paper',
+          isStale: true,
+          fieldKey: 'concepts',
+          contextLabel: 'Table structure',
+          items: [
+            {
+              itemIndex: 0,
+              matchedPhrase: null,
+              claimText: 'Persisted extracted claim.',
+            },
+          ],
+        },
+        sources: [],
+        error: null,
+        onRetry: noop,
+        Title: 'h2',
+        Description: 'p',
+      }),
+    )
+    expect(out).toContain('role="note"')
+    expect(out).toContain('Out of date.')
+    expect(out).toContain('Persisted extracted claim.')
+  })
+})
+
 describe('ResearchMapTab (seeded query cache)', () => {
   const papersKey = papersQuery({ projectId: 'proj' }).queryKey
   const render = (seed: (qc: QueryClient) => void) => {
@@ -327,6 +359,7 @@ describe('workspace wiring', () => {
     const src = read('src/features/projects/workspace/project-workspace.tsx')
     expect(src).toContain('sm:overflow-x-auto')
     expect(src).toContain('sm:flex-none')
+    expect(src).toContain('aria-label="Project workspace"')
   })
 })
 

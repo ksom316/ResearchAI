@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { ChevronDown } from 'lucide-react'
 import { Button } from '#/components/ui/button'
 import { Card, CardContent } from '#/components/ui/card'
 import type { Paper } from '#/features/papers/types'
@@ -32,7 +33,7 @@ export function EvidenceMatrixCards({
           <Card className="gap-3 py-4">
             <CardContent className="space-y-3 px-4">
               <div className="space-y-2">
-                <div className="text-sm font-medium break-words">
+                <div className="min-w-0 text-sm font-medium break-words">
                   {renderTitle(row.paper)}
                 </div>
                 <PaperExtractionStatus
@@ -50,9 +51,13 @@ export function EvidenceMatrixCards({
                     return (
                       <details key={key} className="group px-3 py-2">
                         <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-sm font-medium">
-                          <span>{label}</span>
-                          <span className="text-xs font-normal text-muted-foreground">
+                          <span className="min-w-0">{label}</span>
+                          <span className="flex shrink-0 items-center gap-1 text-xs font-normal text-muted-foreground">
                             {itemCountLabel(model.items.length)}
+                            <ChevronDown
+                              className="size-3.5 transition-transform group-open:rotate-180"
+                              aria-hidden="true"
+                            />
                           </span>
                         </summary>
                         <ul className="mt-2 space-y-2">
