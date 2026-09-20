@@ -14,12 +14,12 @@ import { EXTRACTION_JSON_SCHEMA, extractionOutputSchema } from './schema'
  */
 export const MAX_EXTRACTION_OUTPUT_TOKENS = 3000
 /**
- * Extraction needs little deliberation, and an uncontrolled free reasoning model spent the
- * whole output budget on reasoning (reasoning_tokens ~3052 of 3000, finish_reason=length).
- * Sent per call only from here; Research Chat sends no reasoning setting. Combined with
+ * Extraction needs no model reasoning, and free-router reasoning models can otherwise
+ * spend the whole output budget on reasoning (finish_reason=length). Sent per call only
+ * from here; Research Chat sends no reasoning setting. Combined with
  * provider.require_parameters=true, routing only uses endpoints that support it.
  */
-export const EVIDENCE_EXTRACTION_REASONING: ReasoningConfig = { effort: 'low' }
+export const EVIDENCE_EXTRACTION_REASONING: ReasoningConfig = { effort: 'none' }
 /** paper_extraction_sources.excerpt allows at most 400 characters. */
 export const MAX_EXCERPT_CHARS = 400
 

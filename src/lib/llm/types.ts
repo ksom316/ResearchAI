@@ -18,7 +18,7 @@ export type JsonSchemaSpec = {
  * a request without it is sent exactly as before. Support varies by model/provider.
  */
 export type ReasoningConfig = {
-  effort: 'low' | 'medium' | 'high'
+  effort: 'none' | 'low' | 'medium' | 'high'
 }
 
 export type StructuredRequest = {

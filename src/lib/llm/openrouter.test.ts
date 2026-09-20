@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { LlmError } from './errors'
 import { OpenRouterProvider } from './openrouter'
+import type { ReasoningConfig } from './types'
 
 const KEY = 'sk-or-test-key-not-real-0123456789'
 const MODEL = 'vendor/test-model'
@@ -453,7 +454,9 @@ describe('OpenRouterProvider truncation usage diagnostics', () => {
 })
 
 describe('OpenRouterProvider reasoning control (per call, optional)', () => {
-  const bodyOf = async (req: typeof request & { reasoning?: { effort: 'low' | 'medium' | 'high' } }) => {
+  const bodyOf = async (
+    req: typeof request & { reasoning?: ReasoningConfig },
+  ) => {
     const fetchFn = vi.fn(async (_url: string, _init: RequestInit) =>
       completion('{"a":"ok"}'),
     )
@@ -476,7 +479,7 @@ describe('OpenRouterProvider reasoning control (per call, optional)', () => {
     ])
   })
 
-  it.each(['low', 'medium', 'high'] as const)(
+  it.each(['none', 'low', 'medium', 'high'] as const)(
     'sends exactly reasoning: { effort: "%s" } when requested',
     async (effort) => {
       const { body } = await bodyOf({ ...request, reasoning: { effort } })

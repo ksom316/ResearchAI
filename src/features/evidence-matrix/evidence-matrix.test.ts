@@ -1021,16 +1021,16 @@ describe('safe diagnostic: token usage', () => {
   })
 })
 
-describe('Evidence Matrix requests low reasoning (per call)', () => {
-  it('passes reasoning { effort: low } and the unchanged limits on its single call', async () => {
+describe('Evidence Matrix disables reasoning (per call)', () => {
+  it('passes reasoning { effort: none } and the unchanged limits on its single call', async () => {
     const calls: StructuredRequest[] = []
     await extractEvidenceMatrix(FULL, {
       getLlm: () => fakeProvider(output(), calls),
       nonce: () => 'N',
     })
     expect(calls).toHaveLength(1)
-    expect(calls[0].reasoning).toEqual({ effort: 'low' })
-    expect(EVIDENCE_EXTRACTION_REASONING).toEqual({ effort: 'low' })
+    expect(calls[0].reasoning).toEqual({ effort: 'none' })
+    expect(EVIDENCE_EXTRACTION_REASONING).toEqual({ effort: 'none' })
     expect(calls[0].maxTokens).toBe(3000)
     expect(calls[0].schema.name).toBe('evidence_matrix_extraction')
   })
