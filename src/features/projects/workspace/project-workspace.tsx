@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '#/components/ui/tabs'
 import { PageHeader } from '#/components/page-header'
 import { ChatPanel } from '#/features/chat/ui/chat-panel'
 import { EvidenceMatrixTab } from '#/features/evidence-matrix/ui/evidence-matrix-tab'
+import { ResearchMapTab } from '#/features/research-map/ui/research-map-tab'
 import { DeleteProjectDialog } from '../components/delete-project-dialog'
 import { RenameProjectDialog } from '../components/rename-project-dialog'
 import { projectQuery } from '../queries'
@@ -142,6 +143,9 @@ export function ProjectWorkspace({
         </TabsContent>
         <TabsContent value="evidence" className="mt-6">
           <EvidenceMatrixTab key={project.id} projectId={project.id} />
+        </TabsContent>
+        <TabsContent value="research-map" className="mt-6">
+          <ResearchMapTab key={project.id} projectId={project.id} />
         </TabsContent>
         {WORKSPACE_TABS.filter((t) => t.value in PLACEHOLDERS).map(
           ({ value, icon }) => (

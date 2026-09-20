@@ -2,6 +2,7 @@ import {
   FileText,
   GitCompare,
   LayoutList,
+  Network,
   PenLine,
   Quote,
   Sparkles,
@@ -12,6 +13,7 @@ export const WORKSPACE_TABS = [
   { value: 'papers', label: 'Papers', icon: FileText },
   { value: 'ai-research', label: 'Research Chat', icon: Sparkles },
   { value: 'evidence', label: 'Evidence', icon: Quote },
+  { value: 'research-map', label: 'Research Map', icon: Network },
   { value: 'comparisons', label: 'Comparisons', icon: GitCompare },
   { value: 'writing', label: 'Writing', icon: PenLine },
 ] as const

@@ -547,7 +547,7 @@ describe('workspace wiring and boundaries', () => {
   })
 
   it('the other tabs and the tab list are unchanged', () => {
-    expect(WORKSPACE_TABS.map((t) => t.value)).toEqual(['overview', 'papers', 'ai-research', 'evidence', 'comparisons', 'writing'])
+    expect(WORKSPACE_TABS.map((t) => t.value)).toEqual(['overview', 'papers', 'ai-research', 'evidence', 'research-map', 'comparisons', 'writing'])
     const src = read('src/features/projects/workspace/project-workspace.tsx')
     for (const value of ['overview', 'papers', 'ai-research']) {
       expect(src).toContain(`<TabsContent value="${value}"`)
