@@ -53,9 +53,9 @@ describe('search boundaries', () => {
       (p) => /\.(ts|tsx)$/.test(p) && !p.endsWith('.test.ts'),
     )) {
       if (/query-embedder\.server/.test(source(file))) {
-        // Phase 5C: the chat server function is the second (server-only) importer.
+        // Chat and Writer reuse query embedding only inside authenticated server functions.
         expect(file.replace(/\\/g, '/')).toMatch(
-          /features\/(search\/search|chat\/ask)\.functions\.ts$/,
+          /features\/(search\/search|chat\/ask|writer\/writer)\.functions\.ts$/,
         )
       }
     }
@@ -68,9 +68,11 @@ describe('search boundaries', () => {
       const normalized = file.replace(/\\/g, '/')
       if (normalized.includes('features/search/')) continue
       if (/\.test\.tsx?$/.test(normalized)) continue
-      // Phase 5C: chat reuses retrieval in-process, on the server only.
+      // Chat and Writer reuse retrieval in-process, on the server only.
       if (
-        /features\/chat\/(answer-service|ask\.functions)\.ts$/.test(normalized)
+        /features\/(chat\/(answer-service|ask\.functions)|writer\/(writer-service|writer\.functions))\.ts$/.test(
+          normalized,
+        )
       ) {
         continue
       }
