@@ -307,7 +307,7 @@ describe('workspace wiring', () => {
 
   it('Research Map is a real workspace tab, placed alongside the other research-intelligence tabs', () => {
     expect(WORKSPACE_TABS.map((t) => t.value)).toEqual([
-      'overview', 'papers', 'ai-research', 'evidence', 'research-map', 'comparisons', 'writing',
+      'overview', 'papers', 'ai-research', 'evidence', 'research-map', 'research-gaps', 'comparisons', 'writing',
     ])
   })
 
