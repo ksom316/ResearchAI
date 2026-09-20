@@ -11,6 +11,15 @@ export const MAX_ITEM_CHARS = 500
  */
 export const MAX_EVIDENCE_IDS_PER_ITEM = 5
 
+/**
+ * What the PROVIDER is shown. Deliberately stricter than the defensive runtime limits
+ * above: a model that obeys them writes far fewer tokens (the schema-permitted worst case
+ * then fits inside the output budget), while the parser still accepts anything up to the
+ * runtime limits. Zod stays the authority; nothing here loosens it.
+ */
+export const PROVIDER_MAX_ITEM_CHARS = 240
+export const PROVIDER_MAX_EVIDENCE_IDS = 3
+
 const itemSchema = z.strictObject({
   text: z.string().trim().min(1).max(MAX_ITEM_CHARS),
   evidence_ids: z
@@ -57,11 +66,11 @@ const fieldJson = {
         additionalProperties: false,
         required: ['text', 'evidence_ids'],
         properties: {
-          text: { type: 'string', minLength: 1, maxLength: MAX_ITEM_CHARS },
+          text: { type: 'string', minLength: 1, maxLength: PROVIDER_MAX_ITEM_CHARS },
           evidence_ids: {
             type: 'array',
             minItems: 1,
-            maxItems: MAX_EVIDENCE_IDS_PER_ITEM,
+            maxItems: PROVIDER_MAX_EVIDENCE_IDS,
             items: { type: 'string', pattern: '^E[0-9]{1,3}$' },
           },
         },

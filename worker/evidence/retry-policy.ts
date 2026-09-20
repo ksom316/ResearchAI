@@ -3,6 +3,9 @@
  *  - llm_unavailable: provider timeout / rate limit / 5xx / unreachable (transient)
  *  - persistence:     a database or network hiccup while saving (transient)
  *  - persistence_permanent: the database rejected the data itself (SQLSTATE 22/23/42/P0)
+ *  - truncated:       the provider returned finish_reason=length (the answer was cut off).
+ *                     The router may serve a different model next attempt, so it is retried
+ *                     within the attempt budget. Only this exact signal qualifies.
  *  - invalid_output / invalid_citation: the model's answer failed validation. Retrying
  *                     would spend another LLM call on the same evidence, so it is final.
  *  - unexpected:      a bug or an unknown error; final.
@@ -10,6 +13,7 @@
  */
 export type ExtractionFailureKind =
   | 'llm_unavailable'
+  | 'truncated'
   | 'persistence'
   | 'persistence_permanent'
   | 'invalid_output'
@@ -19,6 +23,7 @@ export type ExtractionFailureKind =
 
 const TRANSIENT: ReadonlySet<ExtractionFailureKind> = new Set([
   'llm_unavailable',
+  'truncated',
   'persistence',
   'superseded',
 ])
@@ -39,6 +44,7 @@ export function decideExtractionFailure(
 /** Short, fixed, internal messages. Never contain model output, paper text or keys. */
 export const FAILURE_MESSAGE: Record<ExtractionFailureKind, string> = {
   llm_unavailable: 'The language model was unavailable.',
+  truncated: 'The model response was cut off before it finished.',
   persistence: 'Saving the extraction failed.',
   persistence_permanent: 'The database rejected the extraction.',
   invalid_output: 'The model returned output that failed validation.',

@@ -25,6 +25,8 @@ import {
   MAX_EVIDENCE_IDS_PER_ITEM,
   MAX_ITEM_CHARS,
   MAX_ITEMS_PER_FIELD,
+  PROVIDER_MAX_EVIDENCE_IDS,
+  PROVIDER_MAX_ITEM_CHARS,
 } from './schema'
 
 const SECTIONS = [
@@ -580,7 +582,7 @@ describe('safe failure diagnostics', () => {
         ),
     }
     const res = await extractEvidenceMatrix(FULL, { getLlm: () => llm })
-    expect(res).toMatchObject({ ok: false, error: 'invalid_output' })
+    expect(res).toMatchObject({ ok: false, error: 'truncated' })
     if (res.ok) return
     expect(res.diagnostic).toBe(
       'truncated; model=vendor/free-model:free; finish_reason=length',
@@ -677,13 +679,16 @@ describe('extraction prompt: conciseness and unchanged limits', () => {
   it('instructs the model to be concise without changing the validator limits', () => {
     expect(EXTRACTION_SYSTEM_PROMPT).toMatch(/Be concise/)
     expect(EXTRACTION_SYSTEM_PROMPT).toMatch(/ONE short factual statement/)
-    expect(EXTRACTION_SYSTEM_PROMPT).toMatch(/under 200 characters/)
+    expect(EXTRACTION_SYSTEM_PROMPT).toMatch(/160 characters or fewer/)
     expect(EXTRACTION_SYSTEM_PROMPT).toMatch(/1 to 2 high-value items per field when they are sufficient, and NEVER more than 3/)
     expect(EXTRACTION_SYSTEM_PROMPT).toMatch(/Never repeat a point/)
     expect(EXTRACTION_SYSTEM_PROMPT).toMatch(/do not explain your citations/)
-    // the hard limits still match the validator and schema
-    expect(EXTRACTION_SYSTEM_PROMPT).toMatch(/the hard limit is 500/)
+    // the prompt states the PROVIDER-visible limits; the parser keeps its own, looser ones
+    expect(EXTRACTION_SYSTEM_PROMPT).toMatch(/the hard limit is 240/)
     expect(EXTRACTION_SYSTEM_PROMPT).toMatch(/1 to 3 concise items/)
+    expect(EXTRACTION_SYSTEM_PROMPT).toMatch(/1 to 3 ids/)
+    expect(EXTRACTION_SYSTEM_PROMPT).toMatch(/no more than 2 evidence ids per item where possible/)
+    expect(EXTRACTION_SYSTEM_PROMPT).toMatch(/Do not drop an important point/)
     expect(MAX_ITEM_CHARS).toBe(500)
     expect(MAX_ITEMS_PER_FIELD).toBe(3)
   })
@@ -715,6 +720,61 @@ describe('contract: at most 3 items per extracted field', () => {
     }
   })
 
+  it('the provider schema is stricter than the runtime parser, never looser', () => {
+    const field = EXTRACTION_JSON_SCHEMA.schema.properties.fields.properties.objective
+    const item = field.properties.items.items
+    // what the provider is shown
+    expect(PROVIDER_MAX_ITEM_CHARS).toBe(240)
+    expect(PROVIDER_MAX_EVIDENCE_IDS).toBe(3)
+    expect(item.properties.text.maxLength).toBe(240)
+    expect(item.properties.evidence_ids.maxItems).toBe(3)
+    expect(field.properties.items.maxItems).toBe(3)
+    expect(item.properties.evidence_ids.minItems).toBe(1)
+    expect(item.properties.evidence_ids.items.pattern).toBe('^E[0-9]{1,3}$')
+    // provider <= runtime, and the runtime limits are unchanged
+    expect(PROVIDER_MAX_ITEM_CHARS).toBeLessThanOrEqual(MAX_ITEM_CHARS)
+    expect(PROVIDER_MAX_EVIDENCE_IDS).toBeLessThanOrEqual(MAX_EVIDENCE_IDS_PER_ITEM)
+    expect(MAX_ITEM_CHARS).toBe(500)
+    expect(MAX_EVIDENCE_IDS_PER_ITEM).toBe(5)
+  })
+
+  it('the parser still accepts everything up to its own (looser) limits', () => {
+    const ok = (text: string, ids: string[]) =>
+      extractionOutputSchema.safeParse(output({ objective: { state: 'extracted', items: [{ text, evidence_ids: ids }] } })).success
+    expect(ok('x'.repeat(500), ['E1'])).toBe(true)
+    expect(ok('a', ['E1', 'E2', 'E3', 'E4', 'E5'])).toBe(true)
+    expect(ok('x'.repeat(501), ['E1'])).toBe(false)
+    expect(ok('a', ['E1', 'E2', 'E3', 'E4', 'E5', 'E6'])).toBe(false)
+  })
+
+  it('the schema-permitted worst case now fits comfortably inside the output budget', () => {
+    const worst = {
+      fields: Object.fromEntries(
+        FIELD_KEYS.map((k) => [k, { state: 'extracted', items: Array.from({ length: MAX_ITEMS_PER_FIELD }, () => ({ text: 'x'.repeat(PROVIDER_MAX_ITEM_CHARS), evidence_ids: ['E10', 'E11', 'E12'] })) }]),
+      ),
+    }
+    const chars = JSON.stringify(worst).length
+    // conservative 2.5 chars/token for dense JSON: still well under 3000
+    expect(chars / 2.5).toBeLessThan(MAX_EXTRACTION_OUTPUT_TOKENS)
+  })
+
+  it('a BERT-style valid extraction (3 of 7 fields, 2-3 short items) is still accepted', () => {
+    const bert = output({
+      objective: { state: 'extracted', items: [{ text: 'a'.repeat(175), evidence_ids: ['E1'] }, { text: 'b'.repeat(134), evidence_ids: ['E1', 'E2'] }] },
+      methodology: { state: 'extracted', items: [{ text: 'c'.repeat(191), evidence_ids: ['E3'] }, { text: 'd'.repeat(177), evidence_ids: ['E3'] }, { text: 'e'.repeat(164), evidence_ids: ['E4'] }] },
+      concepts: { state: 'extracted', items: [{ text: 'f'.repeat(182), evidence_ids: ['E1'] }, { text: 'g'.repeat(200), evidence_ids: ['E2'] }, { text: 'h'.repeat(181), evidence_ids: ['E1'] }] },
+    })
+    expect(extractionOutputSchema.safeParse(bert).success).toBe(true)
+    expect(extractionOutputSchema.safeParse({ fields: { objective: { state: 'not_reported', items: [] } } }).success).toBe(false) // all seven required
+  })
+
+  it('the prompt asks for minified, commentary-free output and stops after the object', () => {
+    expect(EXTRACTION_SYSTEM_PROMPT).toMatch(/minified on a single line/)
+    expect(EXTRACTION_SYSTEM_PROMPT).toMatch(/No Markdown, no code fences, no commentary/)
+    expect(EXTRACTION_SYSTEM_PROMPT).toMatch(/no indentation and no line breaks/)
+    expect(EXTRACTION_SYSTEM_PROMPT).toMatch(/Stop immediately after the closing brace/)
+  })
+
   it('Zod and the provider JSON Schema agree on every shared constraint', () => {
     const field = EXTRACTION_JSON_SCHEMA.schema.properties.fields.properties.objective
     expect(field.properties.items.maxItems).toBe(MAX_ITEMS_PER_FIELD)
@@ -722,10 +782,11 @@ describe('contract: at most 3 items per extracted field', () => {
     // no minItems on "items": not_reported must be [] in the same object (Zod enforces 1..3 for extracted)
     expect(field.properties.items).not.toHaveProperty('minItems')
     const item = field.properties.items.items
-    expect(item.properties.text.maxLength).toBe(MAX_ITEM_CHARS)
+    // the provider limits are the stricter ones (see the test above)
+    expect(item.properties.text.maxLength).toBe(PROVIDER_MAX_ITEM_CHARS)
     expect(item.properties.text.minLength).toBe(1)
     expect(item.properties.evidence_ids.minItems).toBe(1)
-    expect(item.properties.evidence_ids.maxItems).toBe(MAX_EVIDENCE_IDS_PER_ITEM)
+    expect(item.properties.evidence_ids.maxItems).toBe(PROVIDER_MAX_EVIDENCE_IDS)
     expect(item.additionalProperties).toBe(false)
     expect(field.additionalProperties).toBe(false)
     // and the Zod side really enforces the same numbers
@@ -908,7 +969,7 @@ describe('safe diagnostic: token usage', () => {
         ),
     }
     const res = await extractEvidenceMatrix(FULL, { getLlm: () => llm })
-    expect(res).toMatchObject({ ok: false, error: 'invalid_output' })
+    expect(res).toMatchObject({ ok: false, error: 'truncated' })
     if (res.ok) return
     expect(res.diagnostic).toBe(
       'truncated; model=vendor/free-model:free; finish_reason=length; prompt_tokens=6500; completion_tokens=3000; total_tokens=9500; reasoning_tokens=2800',
@@ -1009,5 +1070,85 @@ describe('Evidence Matrix requests low reasoning (per call)', () => {
         ),
     })
     expect(bad).toMatchObject({ ok: false, error: 'invalid_citation' })
+  })
+})
+
+describe('truncation vs other unusable output (extraction level)', () => {
+  const failing = (error: unknown) => {
+    const state = { calls: 0 }
+    const llm: LlmProvider = {
+      generateStructured: () => {
+        state.calls++
+        return Promise.reject(error)
+      },
+    }
+    return { llm, state }
+  }
+  const invalidResponse = (category?: 'truncated' | 'not_json' | 'not_object' | 'empty') =>
+    new LlmError(
+      'invalid_response',
+      'x',
+      undefined,
+      category ? { category, model: 'vendor/m:free', finishReason: category === 'truncated' ? 'length' : 'stop' } : undefined,
+    )
+
+  it('only a provider-confirmed truncation (finish_reason=length) becomes "truncated"', async () => {
+    const { llm, state } = failing(invalidResponse('truncated'))
+    const res = await extractEvidenceMatrix(FULL, { getLlm: () => llm })
+    expect(res).toMatchObject({ ok: false, error: 'truncated' })
+    expect(state.calls).toBe(1) // no internal retry loop
+  })
+
+  it.each(['not_json', 'not_object', 'empty'] as const)('a %s response stays terminal invalid_output', async (category) => {
+    const { llm, state } = failing(invalidResponse(category))
+    const res = await extractEvidenceMatrix(FULL, { getLlm: () => llm })
+    expect(res).toMatchObject({ ok: false, error: 'invalid_output' })
+    expect(state.calls).toBe(1)
+  })
+
+  it('an unusable response with no diagnostic stays terminal invalid_output', async () => {
+    const { llm } = failing(invalidResponse())
+    expect(await extractEvidenceMatrix(FULL, { getLlm: () => llm })).toMatchObject({ ok: false, error: 'invalid_output' })
+  })
+
+  it('completed but schema-invalid JSON stays invalid_output', async () => {
+    const res = await extractEvidenceMatrix(FULL, { getLlm: () => fakeProvider({ fields: 'nope' }) })
+    expect(res).toMatchObject({ ok: false, error: 'invalid_output' })
+  })
+
+  it('invalid, unknown and ineligible citations stay invalid_citation', async () => {
+    const packet = buildEvidencePacket(FULL)
+    const meth = idOf(packet, 'c-s-meth')
+    for (const ids of [['E99'], [meth]]) {
+      const res = await extractEvidenceMatrix(FULL, {
+        getLlm: () => fakeProvider(output({ concepts: { state: 'extracted', items: [{ text: 'x', evidence_ids: ids }] } })),
+      })
+      expect(res).toMatchObject({ ok: false, error: 'invalid_citation' })
+    }
+  })
+
+  it('other provider failures keep their classification', async () => {
+    for (const kind of ['timeout', 'rate_limited', 'provider_error'] as const) {
+      const { llm } = failing(new LlmError(kind, 'x'))
+      expect(await extractEvidenceMatrix(FULL, { getLlm: () => llm })).toMatchObject({ ok: false, error: 'llm_unavailable' })
+    }
+  })
+
+  it('the truncation diagnostic stays free of any content', async () => {
+    const RAW = 'RAW-MODEL-OUTPUT-XYZ'
+    const { llm } = failing(
+      new LlmError('invalid_response', RAW, undefined, {
+        category: 'truncated',
+        model: 'vendor/m:free',
+        finishReason: 'length',
+        usage: { promptTokens: 8827, completionTokens: 3000, totalTokens: 11827, reasoningTokens: 3170 },
+      }),
+    )
+    const res = await extractEvidenceMatrix(FULL, { getLlm: () => llm })
+    if (res.ok) throw new Error('expected failure')
+    expect(res.diagnostic).toBe(
+      'truncated; model=vendor/m:free; finish_reason=length; prompt_tokens=8827; completion_tokens=3000; total_tokens=11827; reasoning_tokens=3170',
+    )
+    expect(res.diagnostic).not.toContain(RAW)
   })
 })

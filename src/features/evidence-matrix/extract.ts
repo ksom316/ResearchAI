@@ -42,6 +42,8 @@ export type NormalizedField = {
 
 export type ExtractionErrorCode =
   | 'llm_unavailable'
+  /** The provider reported finish_reason=length: the answer was cut off (retryable). */
+  | 'truncated'
   | 'invalid_output'
   | 'invalid_citation'
 
@@ -259,7 +261,9 @@ export async function extractEvidenceMatrix(
     if (error instanceof LlmError && error.kind === 'invalid_response') {
       return {
         ok: false,
-        error: 'invalid_output',
+        // ONLY a response the provider itself marked as cut off is retryable. Anything
+        // else that was unusable (not JSON, not an object, empty) stays terminal.
+        error: error.diagnostic?.category === 'truncated' ? 'truncated' : 'invalid_output',
         diagnostic: safeDiagnostic({
           category: error.diagnostic?.category ?? 'invalid_response',
           model: error.diagnostic?.model,

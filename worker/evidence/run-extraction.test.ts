@@ -7,7 +7,7 @@ import { FIELD_KEYS } from '../../src/features/evidence-matrix/fields'
 import { LlmError } from '../../src/lib/llm'
 import type { LlmProvider } from '../../src/lib/llm'
 import { StoreError } from '../embedding/failure'
-import { FAILURE_MESSAGE } from './retry-policy'
+import { decideExtractionFailure, FAILURE_MESSAGE } from './retry-policy'
 import { runNextExtraction } from './run-extraction'
 import type { ClaimedExtraction, ExtractionStore } from './types'
 
@@ -490,5 +490,125 @@ describe('runNextExtraction: safe diagnostics', () => {
     )
     expect(calls.retry).toBe(0)
     expect(calls.fail).toEqual([FAILURE_MESSAGE.invalid_citation])
+  })
+})
+
+describe('runNextExtraction: truncation is retryable within the attempt budget', () => {
+  const truncated = () =>
+    new LlmError('invalid_response', 'cut off', undefined, {
+      category: 'truncated',
+      model: 'vendor/m:free',
+      finishReason: 'length',
+      usage: { promptTokens: 8827, completionTokens: 3000, totalTokens: 11827 },
+    })
+
+  it('the policy retries only truncated (and the existing transient kinds) while attempts remain', () => {
+    for (const attempts of [1, 2]) {
+      expect(decideExtractionFailure('truncated', attempts, 3)).toBe('retry')
+      expect(decideExtractionFailure('llm_unavailable', attempts, 3)).toBe('retry')
+      expect(decideExtractionFailure('persistence', attempts, 3)).toBe('retry')
+    }
+    expect(decideExtractionFailure('truncated', 3, 3)).toBe('fail')
+    for (const kind of ['invalid_output', 'invalid_citation', 'persistence_permanent', 'unexpected'] as const) {
+      expect(decideExtractionFailure(kind, 1, 3), kind).toBe('fail')
+    }
+  })
+
+  it.each([1, 2])('attempt %i: a truncated response is re-queued, not failed', async (attempts) => {
+    const { store, calls } = makeStore({ claim: claim({ attempts }) })
+    const { llm, state } = fakeLlm(truncated())
+    const logs: string[] = []
+    const result = await runNextExtraction({ store, getLlm: () => llm, maxAttempts: 3, log: (m) => logs.push(m) })
+    expect(result).toMatchObject({ kind: 'retry', paperId: 'p1', reason: 'truncated' })
+    expect(state.calls).toBe(1) // one call per claimed attempt, no loop inside
+    expect(calls.retry).toBe(1)
+    expect(calls.fail).toEqual([])
+    expect(calls.stored).toEqual([])
+    expect(calls.complete).toEqual([])
+    expect(logs.join('\n')).toMatch(/will retry \(truncated: truncated; model=vendor\/m:free; finish_reason=length; prompt_tokens=8827; completion_tokens=3000/)
+  })
+
+  it('the last attempt fails closed with a fixed message', async () => {
+    const { store, calls } = makeStore({ claim: claim({ attempts: 3 }) })
+    const { llm } = fakeLlm(truncated())
+    const result = await runNextExtraction({ store, getLlm: () => llm, maxAttempts: 3 })
+    expect(result).toMatchObject({ kind: 'failed', reason: 'truncated' })
+    expect(calls.retry).toBe(0)
+    expect(calls.fail).toEqual([FAILURE_MESSAGE.truncated])
+    expect(FAILURE_MESSAGE.truncated.length).toBeLessThanOrEqual(500)
+  })
+
+  it('other unusable output is still terminal on the first attempt', async () => {
+    for (const bad of [
+      new LlmError('invalid_response', 'x', undefined, { category: 'not_json', model: null, finishReason: 'stop' }),
+      new LlmError('invalid_response', 'x'),
+    ]) {
+      const { store, calls } = makeStore({ claim: claim({ attempts: 1 }) })
+      const { llm } = fakeLlm(bad)
+      const result = await runNextExtraction({ store, getLlm: () => llm, maxAttempts: 3 })
+      expect(result).toMatchObject({ kind: 'failed', reason: 'invalid_output' })
+      expect(calls.retry).toBe(0)
+    }
+    // completed but schema-invalid
+    const { store, calls } = makeStore({ claim: claim({ attempts: 1 }) })
+    const { llm } = fakeLlm({ fields: 'nope' })
+    expect(await runNextExtraction({ store, getLlm: () => llm, maxAttempts: 3 })).toMatchObject({ kind: 'failed', reason: 'invalid_output' })
+    expect(calls.retry).toBe(0)
+  })
+
+  it('full lifecycle: a route that always truncates is called exactly maxAttempts times, then fails', async () => {
+    // queue semantics of the real RPCs: claim increments attempts, retry re-queues WITHOUT
+    // touching attempts, only a user request (not simulated) resets them
+    let attempts = 0
+    let pending = true
+    let failed: string | null = null
+    const store: ExtractionStore = {
+      claimNext: () => {
+        if (!pending) return Promise.resolve(null)
+        pending = false
+        attempts++
+        return Promise.resolve(claim({ attempts }))
+      },
+      loadPaper: () => Promise.resolve({ input: PAPER, generationCurrent: true }),
+      storeField: () => Promise.resolve(true),
+      complete: () => Promise.resolve('complete'),
+      retry: () => {
+        pending = true
+        return Promise.resolve(true)
+      },
+      fail: (_c, message) => {
+        failed = message
+        return Promise.resolve(true)
+      },
+    }
+    const { llm, state } = fakeLlm(truncated())
+    const kinds: string[] = []
+    for (let i = 0; i < 20; i++) {
+      const r = await runNextExtraction({ store, getLlm: () => llm, maxAttempts: 3 })
+      kinds.push(r.kind)
+      if (r.kind === 'idle') break
+    }
+    expect(kinds).toEqual(['retry', 'retry', 'failed', 'idle'])
+    expect(state.calls).toBe(3)
+    expect(attempts).toBe(3)
+    expect(failed).toBe(FAILURE_MESSAGE.truncated)
+  })
+
+  it('a later attempt can succeed on another route (truncated once, then valid)', async () => {
+    let calls = 0
+    const llm: LlmProvider = {
+      generateStructured: () => {
+        calls++
+        return calls === 1
+          ? Promise.reject(truncated())
+          : Promise.resolve({ data: goodOutput(), usage: null, provider: 'openrouter', model: 'other/route:free' })
+      },
+    }
+    const first = makeStore({ claim: claim({ attempts: 1 }) })
+    expect(await runNextExtraction({ store: first.store, getLlm: () => llm, maxAttempts: 3 })).toMatchObject({ kind: 'retry' })
+    const second = makeStore({ claim: claim({ attempts: 2 }) })
+    expect(await runNextExtraction({ store: second.store, getLlm: () => llm, maxAttempts: 3 })).toMatchObject({ kind: 'complete', status: 'complete' })
+    expect(second.calls.stored).toHaveLength(7)
+    expect(second.calls.complete).toEqual([{ provider: 'openrouter', model: 'other/route:free' }])
   })
 })
