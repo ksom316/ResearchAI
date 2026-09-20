@@ -1,14 +1,17 @@
+import type { ReactNode } from 'react'
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { Network } from 'lucide-react'
 import { EmptyState } from '#/components/empty-state'
 import { QueryError } from '#/components/query-error'
+import { Button } from '#/components/ui/button'
 import { Skeleton } from '#/components/ui/skeleton'
 import { extractionFieldsQuery, extractionOverviewsQuery } from '#/features/evidence-matrix/queries'
 import { hasActiveExtraction } from '#/features/evidence-matrix/status'
 import { papersQuery } from '#/features/papers/queries'
 import type { Paper } from '#/features/papers/types'
+import { buildGraphViewModel } from '../graph-view-model'
 import {
   buildPaperSummaries,
   buildTermIndex,
@@ -22,6 +25,9 @@ import { RelationshipEvidenceSheet } from './relationship-evidence-sheet'
 import { RelationshipIndex } from './relationship-index'
 import { ResearchMapFilters } from './research-map-filters'
 import { ResearchMapSummaryView } from './research-map-summary'
+import { VisualMap } from './visual-map'
+
+type ViewMode = 'graph' | 'index'
 
 const paperLink = (paper: Paper) => (
   <Link
@@ -51,6 +57,10 @@ export function ResearchMapTab({ projectId }: { projectId: string }) {
   const [kind, setKind] = useState<TermKindFilter>('all')
   const [hideStale, setHideStale] = useState(false)
   const [selection, setSelection] = useState<EvidenceSelection | null>(null)
+  // Desktop/tablet only (see the render below): mobile always shows the structured
+  // index and never mounts the graph, so this default only matters at md+.
+  const [viewMode, setViewMode] = useState<ViewMode>('graph')
+  const [showFindings, setShowFindings] = useState(false)
 
   const state = deriveResearchMapState({ papers, overviews, fields })
 
@@ -89,6 +99,34 @@ export function ResearchMapTab({ projectId }: { projectId: string }) {
       const paperRows = buildPaperSummaries(state.map, state.fields)
       const filteredTerms = filterTermIndex(termIndex, { kind, search, hideStale })
       const filteredPapers = filterPaperSummaries(paperRows, search)
+      const renderTitle = (row: { paperId: string; title: string }): ReactNode => {
+        const paper = papers.data?.find((p) => p.id === row.paperId)
+        return paper ? paperLink(paper) : <span>{row.title}</span>
+      }
+
+      const indexView = (
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <div>
+            <h3 className="mb-2 text-sm font-semibold text-muted-foreground uppercase">
+              Relationships
+            </h3>
+            <RelationshipIndex entries={filteredTerms} onViewEvidence={setSelection} />
+          </div>
+          <div>
+            <h3 className="mb-2 text-sm font-semibold text-muted-foreground uppercase">
+              Papers
+            </h3>
+            <PaperRelationshipList
+              rows={filteredPapers}
+              onViewEvidence={setSelection}
+              renderTitle={renderTitle}
+            />
+          </div>
+        </div>
+      )
+
+      const graph = buildGraphViewModel(filteredTerms, filteredPapers, { showFindings })
+
       return (
         <div className="space-y-4">
           <ResearchMapSummaryView summary={state.map.summary} />
@@ -101,27 +139,58 @@ export function ResearchMapTab({ projectId }: { projectId: string }) {
             onHideStaleChange={setHideStale}
             showStaleToggle={state.map.summary.stalePapers > 0}
           />
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            <div>
-              <h3 className="mb-2 text-sm font-semibold text-muted-foreground uppercase">
-                Relationships
-              </h3>
-              <RelationshipIndex entries={filteredTerms} onViewEvidence={setSelection} />
+
+          {/* Mobile: always the structured index — never a forced graph canvas. */}
+          <div className="md:hidden">{indexView}</div>
+
+          {/* Tablet/desktop: an explicit switcher between the visual map and the index. */}
+          <div className="hidden space-y-4 md:block">
+            <div
+              role="group"
+              aria-label="Research Map display mode"
+              className="flex flex-wrap items-center gap-2"
+            >
+              <Button
+                type="button"
+                size="xs"
+                variant={viewMode === 'graph' ? 'secondary' : 'outline'}
+                aria-pressed={viewMode === 'graph'}
+                onClick={() => setViewMode('graph')}
+              >
+                Visual Map
+              </Button>
+              <Button
+                type="button"
+                size="xs"
+                variant={viewMode === 'index' ? 'secondary' : 'outline'}
+                aria-pressed={viewMode === 'index'}
+                onClick={() => setViewMode('index')}
+              >
+                Relationship Index
+              </Button>
+              {viewMode === 'graph' && (
+                <Button
+                  type="button"
+                  size="xs"
+                  variant={showFindings ? 'secondary' : 'outline'}
+                  aria-pressed={showFindings}
+                  onClick={() => setShowFindings((v) => !v)}
+                >
+                  {showFindings ? 'Hide findings' : 'Show findings'}
+                </Button>
+              )}
             </div>
-            <div>
-              <h3 className="mb-2 text-sm font-semibold text-muted-foreground uppercase">
-                Papers
-              </h3>
-              <PaperRelationshipList
-                rows={filteredPapers}
+            {viewMode === 'graph' ? (
+              <VisualMap
+                graph={graph}
                 onViewEvidence={setSelection}
-                renderTitle={(row) => {
-                  const paper = papers.data?.find((p) => p.id === row.paperId)
-                  return paper ? paperLink(paper) : <span>{row.title}</span>
-                }}
+                onSwitchToIndex={() => setViewMode('index')}
               />
-            </div>
+            ) : (
+              indexView
+            )}
           </div>
+
           <RelationshipEvidenceSheet selected={selection} onClose={() => setSelection(null)} />
         </div>
       )

@@ -609,9 +609,17 @@ describe('boundaries', () => {
       .replace(/(^|[^:])\/\/.*$/gm, '$1')
 
   it('has the expected pure modules', () => {
-    // view-model.ts (6B.3) is the UI's pure consumption layer, added alongside the
-    // frozen derivation modules; it does not change derive/normalize/terms.
-    expect(files.sort()).toEqual(['derive.ts', 'normalize.ts', 'terms.ts', 'types.ts', 'view-model.ts'])
+    // view-model.ts (6B.3) and graph-view-model.ts (6B.4) are pure UI-consumption
+    // layers, added alongside the frozen derivation modules; neither changes
+    // derive/normalize/terms.
+    expect(files.sort()).toEqual([
+      'derive.ts',
+      'graph-view-model.ts',
+      'normalize.ts',
+      'terms.ts',
+      'types.ts',
+      'view-model.ts',
+    ])
   })
 
   it('imports no Supabase, LLM, worker, network or browser-data code', () => {
