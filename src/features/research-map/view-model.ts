@@ -28,6 +28,22 @@ export const TERM_KIND_LABELS: Record<TermKind, string> = {
   dataset: 'Datasets',
 }
 
+/**
+ * Same wording as Evidence Matrix's own status badges (describeExtraction), so a paper
+ * reads identically in both places. The single source of truth for both the paper list
+ * and the graph's paper nodes, so they can never drift apart.
+ */
+export const PAPER_STATUS_LABEL: Record<PaperNode['statusKey'], string> = {
+  waiting: 'Waiting for processing',
+  not_extracted: 'Not extracted',
+  queued: 'Queued',
+  extracting: 'Extracting…',
+  extracted: 'Extracted',
+  out_of_date: 'Out of date',
+  partial: 'Partial',
+  failed: 'Extraction failed',
+}
+
 /** The field a term kind's evidence always comes from (mirrors derive.ts's mapping). */
 const TERM_FIELD_KEY: Record<TermKind, FieldKey> = {
   concept: 'concepts',

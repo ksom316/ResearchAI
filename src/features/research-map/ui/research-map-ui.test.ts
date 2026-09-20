@@ -162,6 +162,18 @@ describe('RelationshipIndex', () => {
     const out = html(createElement(RelationshipIndex, { entries, onViewEvidence: noop }))
     expect(out).toMatch(/aria-label="View evidence for BERT in (RoBERTa|test research)"/)
   })
+
+  it('6B.5: distinguishes "no shared X yet" (empty corpus) from "no X match the current filters" (filtered)', () => {
+    const unfiltered = html(createElement(RelationshipIndex, { entries, onViewEvidence: noop }))
+    expect(unfiltered).toContain('No shared datasets yet.')
+    expect(unfiltered).not.toContain('match the current filters')
+
+    const filtered = html(createElement(RelationshipIndex, { entries: [], onViewEvidence: noop, filtersActive: true }))
+    expect(filtered).toContain('No concepts match the current filters.')
+    expect(filtered).toContain('No methodologies match the current filters.')
+    expect(filtered).toContain('No datasets match the current filters.')
+    expect(filtered).not.toContain('yet.')
+  })
 })
 
 describe('PaperRelationshipList', () => {
@@ -248,6 +260,33 @@ describe('ResearchMapTab (seeded query cache)', () => {
     expect(out).toContain('BERT')
     expect(out).toContain('test research')
     expect(out).toContain('RoBERTa')
+  })
+
+  it('6B.5: paper status wording matches Evidence Matrix exactly (single shared source)', () => {
+    const out = render((qc) => {
+      qc.setQueryData(papersKey, [paper(P1, 'Stale Paper')])
+      qc.setQueryData(evidenceKeys.overview([P1]), [overview(P1, { isStale: true })])
+      qc.setQueryData(evidenceKeys.fields([P1]), [])
+    })
+    expect(out).toContain('Out of date')
+    expect(out).not.toContain('"waiting"') // no raw statusKey leaking as text
+  })
+
+  it('6B.5: a search matching no paper shows a calm "no matches" message, not a blank list', () => {
+    const out = render((qc) => {
+      qc.setQueryData(papersKey, [paper(P1, 'test research'), paper(P2, 'RoBERTa')])
+      qc.setQueryData(evidenceKeys.overview([P1, P2]), [overview(P1), overview(P2)])
+      qc.setQueryData(evidenceKeys.fields([P1, P2]), [
+        field(P1, 'methodology', ['We build on BERT.']),
+        field(P2, 'methodology', ['We reimplement BERT.']),
+      ])
+    })
+    // simulate the zero-row case directly against the pure list component, since the
+    // tab's search box has no server-renderable "typed" state in this test harness
+    const empty = html(createElement(PaperRelationshipList, { rows: [], onViewEvidence: noop }))
+    expect(empty).toContain('No papers match the current filters.')
+    expect(empty).not.toContain('<ul') // not a silently empty list
+    expect(out).toContain('Papers') // sanity: the unfiltered tab still has content
   })
 
   it('an extraction-data error is shown as an error, not as "no relationships"', () => {

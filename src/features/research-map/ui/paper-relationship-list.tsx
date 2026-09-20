@@ -1,20 +1,8 @@
 import type { ReactNode } from 'react'
 import { Button } from '#/components/ui/button'
 import { Card, CardContent } from '#/components/ui/card'
-import type { ExtractionStatusKey } from '#/features/evidence-matrix/status'
+import { makeEvidenceSelection, PAPER_STATUS_LABEL } from '../view-model'
 import type { EvidenceSelection, PaperSummaryRow, SharedTermRef } from '../view-model'
-
-/** Same vocabulary as the Evidence Matrix status badges, kept local (presentational only). */
-const STATUS_LABEL: Record<ExtractionStatusKey, string> = {
-  waiting: 'Waiting for processing',
-  not_extracted: 'Not extracted',
-  queued: 'Queued',
-  extracting: 'Extracting…',
-  extracted: 'Extracted',
-  out_of_date: 'Out of date',
-  partial: 'Partial',
-  failed: 'Extraction failed',
-}
 
 function RelationshipRow({
   label,
@@ -43,13 +31,9 @@ function RelationshipRow({
           variant="outline"
           aria-label={`View evidence for ${ref.label} in ${paperTitle}`}
           onClick={() =>
-            onViewEvidence({
-              paperId,
-              paperTitle,
-              fieldKey,
-              contextLabel: ref.label,
-              items: ref.evidence,
-            })
+            onViewEvidence(
+              makeEvidenceSelection(paperId, paperTitle, fieldKey, ref.label, ref.evidence),
+            )
           }
         >
           {ref.label}
@@ -72,6 +56,13 @@ export function PaperRelationshipList({
   onViewEvidence: (selection: EvidenceSelection) => void
   renderTitle?: (row: PaperSummaryRow) => ReactNode
 }) {
+  if (rows.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        No papers match the current filters.
+      </p>
+    )
+  }
   return (
     <ul className="space-y-3">
       {rows.map((row) => {
@@ -89,7 +80,7 @@ export function PaperRelationshipList({
                     {renderTitle(row)}
                   </span>
                   <span className="text-xs text-muted-foreground">
-                    {STATUS_LABEL[row.statusKey]}
+                    {PAPER_STATUS_LABEL[row.statusKey]}
                   </span>
                 </div>
                 {isolated ? (
@@ -140,15 +131,15 @@ export function PaperRelationshipList({
                                 variant="outline"
                                 aria-label={`View evidence for finding ${i + 1} in ${row.title}`}
                                 onClick={() =>
-                                  onViewEvidence({
-                                    paperId: row.paperId,
-                                    paperTitle: row.title,
-                                    fieldKey: 'findings',
-                                    contextLabel: `Finding ${i + 1}`,
-                                    items: [
-                                      { itemIndex: f.itemIndex, matchedPhrase: null, claimText: f.text },
-                                    ],
-                                  })
+                                  onViewEvidence(
+                                    makeEvidenceSelection(
+                                      row.paperId,
+                                      row.title,
+                                      'findings',
+                                      `Finding ${i + 1}`,
+                                      [{ itemIndex: f.itemIndex, matchedPhrase: null, claimText: f.text }],
+                                    ),
+                                  )
                                 }
                               >
                                 View evidence

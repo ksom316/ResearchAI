@@ -4,7 +4,7 @@ import type {
   PaperSummaryRow,
   TermIndexEntry,
 } from './view-model'
-import { makeEvidenceSelection } from './view-model'
+import { makeEvidenceSelection, PAPER_STATUS_LABEL } from './view-model'
 
 /**
  * Converts the ALREADY-FILTERED 6B.3 view-model (TermIndexEntry[] / PaperSummaryRow[])
@@ -106,7 +106,7 @@ export function buildGraphViewModel(
       id: paperNodeId(row.paperId),
       kind: 'paper',
       position: { x: paperX(i), y: PAPER_Y },
-      data: { label: row.title, isStale: row.isStale, statusLabel: STATUS_LABEL[row.statusKey] },
+      data: { label: row.title, isStale: row.isStale, statusLabel: PAPER_STATUS_LABEL[row.statusKey] },
     })
   })
 
@@ -165,17 +165,6 @@ export function buildGraphViewModel(
   }
 
   return { kind: 'graph', nodes, edges }
-}
-
-const STATUS_LABEL: Record<PaperSummaryRow['statusKey'], string> = {
-  waiting: 'Waiting',
-  not_extracted: 'Not extracted',
-  queued: 'Queued',
-  extracting: 'Extracting…',
-  extracted: 'Extracted',
-  out_of_date: 'Out of date',
-  partial: 'Partial',
-  failed: 'Failed',
 }
 
 const TRUNCATE_AT = 60

@@ -99,6 +99,7 @@ export function ResearchMapTab({ projectId }: { projectId: string }) {
       const paperRows = buildPaperSummaries(state.map, state.fields)
       const filteredTerms = filterTermIndex(termIndex, { kind, search, hideStale })
       const filteredPapers = filterPaperSummaries(paperRows, search)
+      const filtersActive = search.trim() !== '' || kind !== 'all' || hideStale
       const renderTitle = (row: { paperId: string; title: string }): ReactNode => {
         const paper = papers.data?.find((p) => p.id === row.paperId)
         return paper ? paperLink(paper) : <span>{row.title}</span>
@@ -110,7 +111,11 @@ export function ResearchMapTab({ projectId }: { projectId: string }) {
             <h3 className="mb-2 text-sm font-semibold text-muted-foreground uppercase">
               Relationships
             </h3>
-            <RelationshipIndex entries={filteredTerms} onViewEvidence={setSelection} />
+            <RelationshipIndex
+              entries={filteredTerms}
+              onViewEvidence={setSelection}
+              filtersActive={filtersActive}
+            />
           </div>
           <div>
             <h3 className="mb-2 text-sm font-semibold text-muted-foreground uppercase">

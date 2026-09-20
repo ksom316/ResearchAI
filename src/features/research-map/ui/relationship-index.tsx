@@ -1,5 +1,5 @@
 import { Button } from '#/components/ui/button'
-import { TERM_KIND_LABELS } from '../view-model'
+import { makeEvidenceSelection, TERM_KIND_LABELS } from '../view-model'
 import type { EvidenceSelection, TermIndexEntry } from '../view-model'
 import type { TermKind } from '../types'
 
@@ -13,9 +13,12 @@ const KIND_ORDER: readonly TermKind[] = ['concept', 'methodology', 'dataset']
 export function RelationshipIndex({
   entries,
   onViewEvidence,
+  filtersActive = false,
 }: {
   entries: readonly TermIndexEntry[]
   onViewEvidence: (selection: EvidenceSelection) => void
+  /** True when search/kind/stale filters are narrowing the list, for accurate empty-state wording. */
+  filtersActive?: boolean
 }) {
   return (
     <div className="space-y-5">
@@ -28,7 +31,9 @@ export function RelationshipIndex({
             </h3>
             {forKind.length === 0 ? (
               <p className="mt-1 text-sm text-muted-foreground">
-                No shared {TERM_KIND_LABELS[kind].toLowerCase()} yet.
+                {filtersActive
+                  ? `No ${TERM_KIND_LABELS[kind].toLowerCase()} match the current filters.`
+                  : `No shared ${TERM_KIND_LABELS[kind].toLowerCase()} yet.`}
               </p>
             ) : (
               <ul className="mt-2 space-y-2">
@@ -61,13 +66,15 @@ export function RelationshipIndex({
                               variant="outline"
                               aria-label={`View evidence for ${entry.label} in ${p.title}`}
                               onClick={() =>
-                                onViewEvidence({
-                                  paperId: p.paperId,
-                                  paperTitle: p.title,
-                                  fieldKey: entry.fieldKey,
-                                  contextLabel: entry.label,
-                                  items: p.evidence,
-                                })
+                                onViewEvidence(
+                                  makeEvidenceSelection(
+                                    p.paperId,
+                                    p.title,
+                                    entry.fieldKey,
+                                    entry.label,
+                                    p.evidence,
+                                  ),
+                                )
                               }
                             >
                               View evidence
