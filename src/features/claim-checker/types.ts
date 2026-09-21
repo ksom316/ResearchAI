@@ -63,3 +63,54 @@ export type ClaimCheckEvidenceResult =
       request: NormalizedClaimCheckRequest
       evidence: ClaimCheckEvidencePacket
     }
+
+export const CLAIM_SUPPORT_VALUES = [
+  'supported',
+  'partially_supported',
+  'unsupported',
+  'insufficient_evidence',
+] as const
+
+export type ClaimSupport = (typeof CLAIM_SUPPORT_VALUES)[number]
+
+export type ClaimCitationAssessment = {
+  citationId: WriterEvidenceId
+  support: ClaimSupport
+  rationale: string
+  paperId: string
+  paperTitle: string
+  locator: WriterEvidenceLocator
+}
+
+export type ClaimSupportAssessment = {
+  claimId: ClaimCheckClaimId
+  overallSupport: ClaimSupport
+  summary: string
+  unsupportedFragments: string[]
+  citations: ClaimCitationAssessment[]
+}
+
+export type ClaimCheckAssessmentError =
+  | ClaimCheckEvidenceError
+  | 'checker_busy'
+  | 'checker_timeout'
+  | 'checker_unavailable'
+  | 'checker_truncated'
+  | 'invalid_output'
+  | 'invalid_assessment'
+
+export type ClaimCheckResult =
+  | { ok: false; error: ClaimCheckAssessmentError }
+  | {
+      ok: true
+      status: 'insufficient_evidence'
+      stage: 'evidence'
+      claimId: ClaimCheckClaimId
+      reason: ClaimCheckAbstentionReason
+      explanation: string
+    }
+  | {
+      ok: true
+      status: 'assessed'
+      assessment: ClaimSupportAssessment
+    }
