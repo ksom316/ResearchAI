@@ -130,7 +130,11 @@ export function AcademicWriterTab({ projectId }: { projectId: string }) {
           </div>
         )}
         {!generating && result?.ok && result.status === 'generated' && (
-          <GroundedDraftView draft={result.draft} onSelectCitation={setSelection} />
+          <GroundedDraftView
+            projectId={projectId}
+            draft={result.draft}
+            onSelectCitation={setSelection}
+          />
         )}
       </section>
 

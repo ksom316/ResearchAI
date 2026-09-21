@@ -51,6 +51,7 @@ describe('Academic Writer UI', () => {
 
   it('renders structured units with global numeric citation buttons, not internal ids', () => {
     const html = renderToStaticMarkup(createElement(GroundedDraftView, {
+      projectId: '11111111-1111-4111-8111-111111111111',
       draft, onSelectCitation: () => undefined,
     }))
     expect(html).toContain('Grounded result.')
@@ -59,6 +60,7 @@ describe('Academic Writer UI', () => {
     expect(html).not.toContain('>W1<')
     expect(html).not.toContain('>U1<')
     expect(html).toContain('break-words')
+    expect(html).toContain('>Check support</button>')
   })
 
   it('keeps provenance lazy and exposes accessible Sheet and Open paper wiring', () => {

@@ -2,6 +2,7 @@ import { Check, Copy, FileText } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '#/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '#/components/ui/card'
+import { ClaimCheckButton } from '#/features/claim-checker/ui/claim-check-button'
 import { citationNumberMap, formatDraftForCopy } from '../presentation'
 import type { GroundedDraft, GroundedDraftCitation } from '../types'
 
@@ -12,9 +13,11 @@ export type WriterCitationSelection = {
 }
 
 export function GroundedDraftView({
+  projectId,
   draft,
   onSelectCitation,
 }: {
+  projectId: string
   draft: GroundedDraft
   onSelectCitation: (selection: WriterCitationSelection) => void
 }) {
@@ -71,6 +74,17 @@ export function GroundedDraftView({
                     </button>
                   )
                 })}
+                <ClaimCheckButton
+                  projectId={projectId}
+                  unit={unit}
+                  citations={unit.citationIds.flatMap((id) => {
+                    const citation = citations.get(id)
+                    const number = numbers.get(id)
+                    return citation && number !== undefined
+                      ? [{ citation, number }]
+                      : []
+                  })}
+                />
               </span>
             ))}
           </p>
