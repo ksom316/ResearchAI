@@ -87,7 +87,7 @@ export function GroundedDraftView({
                           number: group.number,
                         })
                       }
-                      className="mx-0.5 inline-flex h-6 min-w-7 items-center justify-center rounded-md border bg-accent px-1.5 align-baseline text-xs font-medium text-accent-foreground transition-colors hover:bg-accent/70 focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+                      className="mx-0.5 inline-flex h-9 min-w-9 items-center justify-center rounded-md border bg-accent px-1.5 align-baseline text-xs font-medium text-accent-foreground transition-colors hover:bg-accent/70 focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none sm:h-6 sm:min-w-7"
                     >
                       [{group.number}]
                     </button>

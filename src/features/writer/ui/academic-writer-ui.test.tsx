@@ -2,11 +2,15 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { WORKSPACE_TABS } from '#/features/projects/workspace/tabs'
 import { GroundedDraftView } from './grounded-draft-view'
 import { WriterConfiguration } from './writer-configuration'
 import type { GroundedDraft } from '../types'
+
+vi.mock('@tanstack/react-router', async () => ({
+  Link: (await import('#/test/router-link-mock')).RouterLinkMock,
+}))
 
 const root = new URL('../../../', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')
 const read = (relative: string) => readFileSync(join(root, relative), 'utf8')
@@ -77,6 +81,10 @@ describe('Academic Writer UI', () => {
     expect(html).toContain('Incomplete citation metadata')
     expect(html).toContain('View cited evidence for reference 1')
     expect(html).toContain('Open paper for reference 1')
+    expect(html).toContain('h-9 min-w-9')
+    expect(html).toContain('sm:h-6 sm:min-w-7')
+    expect(html).toContain('ml-1 h-9')
+    expect(html).toContain('sm:h-7')
   })
 
   it('collapses visible same-paper markers without collapsing Claim Checker evidence', () => {

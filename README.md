@@ -1,249 +1,194 @@
 # ResearchAI
 
-ResearchAI is a provenance-first workspace for organizing research papers and turning a project corpus into inspectable research intelligence. It helps researchers move from uploaded PDFs to semantic search, grounded question answering, structured evidence, cross-paper relationships, and conservative potential-gap discovery without losing the connection to the underlying sources.
+ResearchAI is a provenance-first academic research workspace. It turns a private project corpus into searchable evidence, structured cross-paper intelligence, grounded drafts, inspectable citations, and deterministic quality observations.
 
-The project is designed around a simple constraint: generated or derived research claims should be traceable to evidence in papers the user owns. ResearchAI is not an unrestricted essay generator, and its gap explorer does not claim to prove universal gaps in the literature.
+The core design constraint is simple: claims produced or derived by the application must remain traceable to authorized evidence. ResearchAI abstains when that evidence is unavailable or insufficient; it is not an unrestricted essay generator or a universal fact checker.
 
-## Why it exists
+## Core workflow
 
-Literature review work often involves several disconnected steps: storing papers, finding relevant passages, comparing methods and findings, tracing claims back to pages, and identifying patterns across a corpus. General-purpose chat tools can accelerate parts of that process, but they can also obscure provenance or answer beyond the available evidence.
+1. Create a project and upload PDFs or link papers from the private library.
+2. Persistent workers extract text, detect sections, build chunks, and generate Voyage embeddings.
+3. Search and ask corpus-grounded questions with citations to paper sections and pages.
+4. Extract structured paper evidence into the Evidence Matrix.
+5. Explore deterministic Research Map relationships and potential corpus-relative research gaps.
+6. Generate short citation-grounded academic drafts and inspect their source provenance.
+7. Check whether each cited evidence item supports a generated statement.
+8. Review deterministic workspace and draft observations in the Research Quality Inspector.
 
-ResearchAI brings those steps into one project-scoped workflow and favors explicit abstention when the corpus cannot support a result.
+## Major features
 
-## Current workflow
+### Projects, papers, and semantic retrieval
 
-1. Create a research project and add PDF papers from the library or by upload.
-2. Process PDFs into normalized sections and bounded chunks with page metadata.
-3. Generate current-generation chunk embeddings for project-scoped semantic retrieval.
-4. Ask questions in **Research Chat** and inspect the cited supporting passages.
-5. Request **Evidence Matrix** extraction for structured objectives, methodologies, datasets, findings, limitations, future work, and concepts.
-6. Explore shared concepts, methodologies, datasets, and paper findings in the **Research Map**.
-7. Review conservatively derived **Research Gap Explorer** candidates and open their supporting claims and provenance.
-8. Use the in-progress Citation-Grounded Writer foundation to prepare authorized, bounded evidence packets for future grounded drafting.
-
-## Implemented features
-
-### Projects, library, and paper processing
-
-- Email/password and Google authentication flows.
-- User-owned projects and a reusable paper library with many-to-many project assignment.
-- Private PDF storage with ownership-constrained paths.
-- Background PDF parsing, section detection, chunking, page tracking, retry handling, and processing status.
-- Current-generation embedding jobs and project-aware semantic search over non-reference content.
+- Supabase authentication with email/password, password reset, and Google OAuth.
+- User-owned projects, a reusable PDF library, and project-paper linking.
+- Private storage, background PDF processing, section detection, bounded chunks, page metadata, and retryable job handling.
+- Current-generation Voyage embeddings and project-scoped pgvector semantic retrieval.
 
 ### Research Chat
 
-Research Chat is a project-aware retrieval-augmented question-answering experience. It:
+Research Chat performs project-aware retrieval-augmented question answering. The server selects current chunks, assigns deterministic evidence IDs, requests strict structured output from OpenRouter, and validates every returned citation before display. Invalid or unsupported output fails closed, while citations open the underlying paper provenance.
 
-- retrieves relevant current-generation chunks within the authorized scope;
-- packages bounded evidence with deterministic citation identifiers;
-- requests structured output from OpenRouter through a server-only provider;
-- validates the response and citation identifiers before display;
-- links citations back to paper, section, and page context; and
-- returns a grounded no-evidence state instead of generating an unsupported answer.
+Chat is currently single-turn and stateless. It answers only from retrieved project evidence.
 
-Chat is currently single-turn and stateless. It is intentionally constrained to the retrieved project evidence.
+### Academic intelligence
 
-### Evidence Matrix
+- **Evidence Matrix:** source-backed extraction of objectives, methodologies, datasets, findings, limitations, future work, and concepts. It tracks current, partial, failed, and stale states and preserves claim-level provenance.
+- **Research Map:** deterministic shared-concept, methodology, dataset, finding, and direct paper-relationship derivation from validated Matrix data.
+- **Research Gap Explorer:** conservative, deterministic claim-signature matching for recurring limitations and future-research opportunities. Results are potential gaps in the current corpus, never claims about all literature.
 
-The Evidence Matrix extracts and compares seven fixed fields across processed papers:
+### Academic writing and verification
 
-- objective
-- methodology
-- dataset
-- findings
-- limitations
-- future work
-- concepts
+- **Citation-Grounded Academic Writer:** five bounded modes for literature synthesis, study comparison, methodology summary, findings synthesis, and limitations/future-work synthesis. Evidence is authorized and selected server-side; generated units must cite valid evidence or the entire draft is rejected.
+- **Claim Checker:** evaluates one Writer statement against exactly its cited evidence as supported, partially supported, unsupported, or insufficiently supported. This measures evidence support, not universal truth.
+- **Citation and reference handling:** paper-level numeric citations, deterministic reference formatting, editable bibliographic metadata, and evidence-level provenance beneath each visible reference.
+- **Research Quality Inspector:** deterministic workspace and draft findings for processing/search coverage, Evidence Matrix state, citation completeness, unchecked or weakly supported draft units, and evidence concentration. It does not assign a quality score.
 
-Extraction uses bounded, section-aware evidence packets and strict structured output. Persisted claims retain source records so users can inspect supporting excerpts and live chunk provenance. The UI distinguishes pending, running, partial, failed, current, and stale extraction states; extraction is explicitly requested rather than triggered by downstream views.
-
-### Research Map
-
-The Research Map is derived deterministically from persisted Evidence Matrix data. It surfaces:
-
-- shared concepts;
-- shared methodologies;
-- shared datasets;
-- paper-level findings; and
-- direct, typed relationships between papers and shared terms.
-
-It provides a responsive visual graph and structured index, filters, stale-state visibility, and lazy evidence sheets. Map relationships are explainable data structures, not LLM-generated interpretations.
-
-### Research Gap Explorer
-
-The Research Gap Explorer identifies **potential gaps in the current corpus**, not definitive gaps in all published research. Its deterministic claim-signature engine currently supports conservative recurring-limitation and future-research-opportunity matching using:
-
-- direct Research Map relatedness;
-- explicit, versioned action and target vocabularies;
-- evidence from at least two distinct papers;
-- deterministic identifiers and ordering; and
-- preserved Evidence Matrix provenance.
-
-Methodology gaps, dataset-coverage gaps, and finding tensions remain deliberately conservative and abstain unless existing rules provide sufficient support. Candidate details show participating papers, related map terms, current/stale state, matching signals, and lazily loaded source evidence.
-
-### Citation-Grounded Writer — in progress
-
-The Writer architecture and deterministic evidence/retrieval foundation are implemented. The server-side foundation currently provides:
-
-- strict requests for literature synthesis, study comparison, methodology summary, findings synthesis, and limitations/future-work synthesis;
-- authenticated, RLS-scoped project and paper loading;
-- semantic-chunk or Evidence Matrix evidence selection according to mode;
-- source-backed claim filtering and stale-evidence exclusion;
-- deterministic deduplication, paper diversity, ordering, and `W1...Wn` evidence IDs;
-- bounded evidence packets with sanitization against control characters, prompt delimiters, and citation-ID spoofing; and
-- typed `ready`, `no_evidence`, `insufficient_evidence`, and `stale_only` outcomes.
-
-**Not yet implemented:** Writer LLM generation, post-generation citation validation, draft persistence/editing, and the Writer UI. The workspace currently shows a Writing placeholder; ResearchAI does not yet present generated drafts as a completed feature.
-
-## Architecture overview
+## Grounding architecture
 
 ```text
-Authenticated React workspace
-        │
-        ├── Supabase Auth, Postgres/RLS, private Storage
-        │       ├── projects and paper links
-        │       ├── processing sections/chunks
-        │       ├── embedding/search state
-        │       └── Evidence Matrix claims and provenance
-        │
-        ├── Local/server-side workers
-        │       ├── PDF processing
-        │       ├── Voyage embedding/indexing
-        │       └── Evidence Matrix extraction
-        │
-        ├── Authenticated server functions
-        │       ├── semantic search
-        │       ├── grounded Research Chat
-        │       └── Writer evidence preparation
-        │
-        └── Deterministic client-side intelligence
-                ├── Research Map
-                └── Research Gap Explorer
+Browser workspace
+  -> authenticated TanStack server functions
+  -> Supabase Auth / Postgres RLS / private Storage
+  -> semantic retrieval or current Evidence Matrix claims
+  -> bounded, sanitized evidence packet
+  -> one strict structured OpenRouter call where required
+  -> runtime schema and provenance/citation validation
+  -> inspectable source UI
+
+Railway workers
+  -> fenced PDF-processing and embedding jobs
+  -> fenced Evidence Matrix extraction jobs
+  -> Supabase using a worker-only service-role credential
 ```
 
-PDF processing and extraction are asynchronous. Research Map and Research Gap candidates reuse already-loaded Evidence Matrix data and derive their views without creating a second persistence layer. Detailed source records are loaded lazily when evidence is opened.
+Research Map, Research Gap Explorer, citation formatting, and Research Quality Inspector rules are deterministic. Research Chat, Evidence Matrix extraction, Academic Writer generation, and Claim Checker assessment are LLM-backed but validated and provenance-constrained.
 
 ## Technology stack
 
-- **Application:** React 19, TypeScript, TanStack Start, TanStack Router, TanStack Query
-- **UI:** Tailwind CSS, shadcn/Radix UI primitives, Lucide icons, XYFlow
-- **Backend:** Supabase Auth, PostgreSQL, Row Level Security, private Storage, database functions
-- **Document processing:** PDF.js, custom section detection and chunking workers
-- **Semantic retrieval:** Voyage AI `voyage-4`, 1,024-dimensional vectors, pgvector-backed search
-- **Structured LLM work:** OpenRouter with a server-configured model and strict JSON Schema support
-- **Validation and testing:** Zod, Vitest, ESLint, Prettier
+- **Web:** React 19, TypeScript, TanStack Start, TanStack Router, TanStack Query
+- **UI:** Tailwind CSS, shadcn/Radix primitives, Lucide, XYFlow
+- **Data:** Supabase Auth, PostgreSQL, Row Level Security, private Storage, pgvector
+- **Documents:** PDF.js plus custom section and chunk processing
+- **Embeddings:** Voyage `voyage-4`, 1,024 dimensions
+- **LLM:** OpenRouter structured output; current configuration uses `openrouter/free`
+- **Hosting:** Vercel web application, Railway persistent workers, Supabase managed services
+- **Quality:** Zod, Vitest, ESLint, Prettier, TypeScript
 
-## Grounding and security principles
+## Production deployment
 
-- Browser requests never supply ownership identity, evidence contents, retrieval limits, provider configuration, or prompts.
-- Authenticated application reads are scoped through Supabase RLS.
-- The Supabase service-role key is restricted to local/server-side workers and must never use a `VITE_` prefix.
-- OpenRouter and Voyage credentials remain server-side and are not returned in errors or logs.
-- Paper text, extracted claims, metadata, and user focus are treated as untrusted content.
-- Structured model outputs and citation IDs are validated before grounded Chat results are displayed.
-- Evidence Matrix, Research Map, Research Gaps, and Writer evidence retain explicit paper/field/item or chunk provenance.
-- Stale processing generations are identified rather than silently treated as current.
-- ResearchAI abstains when evidence is missing, malformed, stale-only, or insufficiently diverse.
+- **Vercel** hosts the SSR web application and authenticated server functions.
+- **Supabase** provides authentication, PostgreSQL/RLS, private PDF storage, pgvector, and fenced job state.
+- **Railway** runs two persistent Node processes: PDF processing plus embeddings, and Evidence Matrix extraction.
+- **Voyage** generates document and search-query embeddings.
+- **OpenRouter** serves the grounded LLM features without exposing provider credentials to the browser.
 
-## Local setup
+## Local development
 
 ### Prerequisites
 
 - Node.js and npm
 - A Supabase project
-- OpenRouter credentials and a configured model for Research Chat and Evidence Matrix extraction
-- Voyage AI credentials for embeddings
+- Voyage and OpenRouter credentials
 
-### 1. Install dependencies
+### Install and configure
 
 ```bash
 npm install
-```
-
-### 2. Configure Supabase
-
-Apply the SQL migrations in `supabase/migrations/` in numeric order. They create the application tables, private `papers` storage bucket, RLS policies, worker claim functions, vector/search infrastructure, and Evidence Matrix persistence.
-
-Copy the browser/server application template:
-
-```bash
 cp .env.example .env.local
-```
-
-Set the public Supabase URL and anon key, plus the server-only OpenRouter settings described in the template. Never place a service-role or provider secret in a `VITE_` variable.
-
-### 3. Configure workers
-
-```bash
 cp .env.worker.example .env.worker
 ```
 
-Set the server-only Supabase service-role key, Voyage key, and—when running evidence extraction—the OpenRouter settings documented in the template. These files are gitignored; do not commit real credentials.
+Application variables (`.env.local`):
 
-### 4. Start the application
+```dotenv
+VITE_SUPABASE_URL=https://your-project-ref.supabase.co
+VITE_SUPABASE_ANON_KEY=your-publishable-key
+OPENROUTER_API_KEY=your-openrouter-key
+LLM_MODEL=openrouter/free
+LLM_STRUCTURED_MODE=json_schema
+EMBEDDING_API_KEY=your-voyage-key
+```
+
+`EMBEDDING_API_KEY` is required by the Vercel server runtime for semantic query embeddings. `OPENROUTER_API_KEY`, `LLM_MODEL`, and `LLM_STRUCTURED_MODE` are server-only despite being stored alongside the public `VITE_` settings.
+
+Worker variables (`.env.worker`):
+
+```dotenv
+SUPABASE_URL=https://your-project-ref.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+EMBEDDING_API_KEY=your-voyage-key
+EMBEDDING_STAGE_ENABLED=true
+OPENROUTER_API_KEY=your-openrouter-key
+LLM_MODEL=openrouter/free
+LLM_STRUCTURED_MODE=json_schema
+```
+
+Never expose the service-role or provider keys through a `VITE_` variable. Real environment files are gitignored.
+
+### Database
+
+Apply `supabase/migrations/` in numeric order. The current latest migration is:
+
+```text
+0012_citation_metadata.sql
+```
+
+It adds user-maintained citation metadata without invalidating processing, embeddings, Matrix evidence, or provenance.
+
+### Start the application and workers
 
 ```bash
 npm run dev
+
+# Persistent PDF processing + Voyage embedding process
+npm run worker:local
+
+# Persistent Evidence Matrix extraction process
+npm run worker:evidence:local
 ```
 
-The development server runs on `http://localhost:3000`.
+Production worker processes use `npm run worker` and `npm run worker:evidence`, with environment variables injected by the host. See `WORKER_DEPLOYMENT.md` and `Dockerfile.worker`.
 
-### 5. Run background stages as needed
+## Security and privacy highlights
 
-```bash
-# Process uploaded PDFs continuously
-npm run worker
+- Application access is scoped through authenticated, request-scoped Supabase clients and RLS.
+- The service-role key is worker-only and is never required by the browser or Vercel web application.
+- Browser requests cannot supply user identity, evidence contents, prompts, retrieval limits, or provider options as authority.
+- PDFs, metadata, claims, and user instructions are treated as untrusted content and sanitized at prompt boundaries.
+- Structured output, citation IDs, evidence locators, project membership, currentness, and provenance are revalidated server-side.
+- Provider errors and diagnostics omit prompts, paper text, raw responses, credentials, and user/project identifiers.
+- Citation metadata is formatted deterministically; the LLM cannot invent bibliographic identity.
 
-# Preview or index one ready paper
-npm run embedding:index:dry -- <paper-id>
-npm run embedding:index -- <paper-id>
+## Known limitations
 
-# Process explicitly requested Evidence Matrix extractions
-npm run worker:evidence
-```
+- Research Chat is single-turn and stateless.
+- Writer drafts and Claim Checker assessments are ephemeral and are not autosaved.
+- Claim Checker assesses only the supplied cited evidence; it is not a web-enabled fact checker.
+- Research Gap Explorer is deliberately conservative and corpus-relative.
+- Bibliographic metadata may require manual completion; ResearchAI does not fabricate missing fields or perform external metadata lookup.
+- `openrouter/free` routing can be intermittently unavailable; failures are surfaced safely without automatic model fallback.
+- Background processing depends on the two persistent worker services being healthy.
+- The Comparisons workspace remains a placeholder; comparison writing is available through Academic Writer.
 
-The worker scripts also provide `:once` and `:drain` variants where listed in `package.json`. Continuous embedding scheduling is opt-in through the worker configuration documented in `.env.worker.example`.
-
-## Quality checks
+## Validation
 
 ```bash
 npm test
 npx tsc --noEmit
 npm run lint
 npm run build
-npm run check
+git diff --check
 ```
-
-## Project status and roadmap
-
-| Area                                                    | Status                            |
-| ------------------------------------------------------- | --------------------------------- |
-| Authentication, projects, library, PDF ingestion        | Implemented                       |
-| PDF processing, sections, chunks, and retryable workers | Implemented                       |
-| Embeddings and semantic retrieval                       | Implemented                       |
-| Citation-grounded Research Chat                         | Implemented                       |
-| Evidence Matrix extraction and provenance UI            | Implemented                       |
-| Deterministic Research Map                              | Implemented                       |
-| Deterministic Research Gap Explorer                     | Implemented                       |
-| Writer architecture and evidence/retrieval foundation   | Implemented                       |
-| Writer structured generation and citation validation    | Planned / not yet implemented     |
-| Writer UI and draft workflow                            | Planned / not yet implemented     |
-| Comparisons workspace                                   | Placeholder / not yet implemented |
-
-Near-term work centers on completing the Citation-Grounded Writer without weakening the existing grounding boundary: structured sentence- or claim-level generation, fail-closed citation validation, inspectable provenance, and a responsive Writer workspace.
 
 ## Repository layout
 
 ```text
-src/features/          Feature modules for papers, chat, evidence, maps, gaps, and Writer foundations
-src/lib/               Shared Supabase, embedding, and structured-LLM infrastructure
-src/routes/            TanStack file-based routes
+src/features/          Product domains and UI
+src/lib/               Supabase, embedding, and structured-LLM infrastructure
+src/routes/            TanStack file-based routes and document shell
 worker/                PDF, embedding, and Evidence Matrix workers
-supabase/migrations/   Ordered database and RLS migrations
-supabase/verification/ SQL verification scripts for data/security invariants
+supabase/migrations/   Ordered schema, RLS, job, vector, and citation migrations
+supabase/verification/ SQL verification scripts
 ```
 
----
-
-ResearchAI is under active development. Current intelligence features are corpus-relative and evidence-backed; they should support—not replace—a researcher's judgment and source review.
+ResearchAI supports research judgment with transparent, corpus-grounded evidence. It does not replace reading the source papers.

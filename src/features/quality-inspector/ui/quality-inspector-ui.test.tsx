@@ -5,6 +5,10 @@ import { QueryError } from '#/components/query-error'
 import type { InspectorFinding } from '../types'
 import { QualityInspectorView } from './quality-inspector-view'
 
+vi.mock('@tanstack/react-router', async () => ({
+  Link: (await import('#/test/router-link-mock')).RouterLinkMock,
+}))
+
 const finding = (
   severity: InspectorFinding['severity'],
   kind = `kind-${severity}`,

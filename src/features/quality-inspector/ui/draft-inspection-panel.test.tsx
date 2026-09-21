@@ -1,11 +1,15 @@
 import { readFileSync } from 'node:fs'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { normalizePaperCitationMetadata } from '#/features/citations/normalize'
 import type { ClaimSupportAssessment } from '#/features/claim-checker/types'
 import type { GroundedDraft } from '#/features/writer/types'
 import { DraftInspectionPanel } from './draft-inspection-panel'
+
+vi.mock('@tanstack/react-router', async () => ({
+  Link: (await import('#/test/router-link-mock')).RouterLinkMock,
+}))
 
 function draft(): GroundedDraft {
   return {

@@ -68,7 +68,7 @@ export function ClaimCheckButton({
         size="sm"
         disabled={!request || checking}
         aria-label="Check whether the cited evidence supports this generated statement"
-        className="ml-1 h-7 align-baseline text-xs"
+        className="ml-1 h-9 align-baseline text-xs sm:h-7"
         onClick={() => void checkSupport()}
       >
         {checking ? (

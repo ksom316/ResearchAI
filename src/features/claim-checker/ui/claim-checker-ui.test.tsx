@@ -2,10 +2,14 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import type { GroundedDraft } from '#/features/writer/types'
 import { GroundedDraftView } from '#/features/writer/ui/grounded-draft-view'
 import { ClaimSupportStatus } from './claim-support-status'
+
+vi.mock('@tanstack/react-router', async () => ({
+  Link: (await import('#/test/router-link-mock')).RouterLinkMock,
+}))
 
 const root = new URL('../../../', import.meta.url).pathname.replace(
   /^\/([A-Za-z]:)/,
