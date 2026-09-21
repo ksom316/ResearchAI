@@ -109,11 +109,11 @@ describe('embedding worker boundaries', () => {
     }
   })
 
-  it('the embedding stage is opt-in and off by default', () => {
+  it('keeps the low-level default off but requires production docs to enable it', () => {
     const config = code(join(root, 'worker/embedding-config.ts'))
     expect(config).toMatch(/stageEnabled: stage === 'true' \|\| stage === '1'/)
     expect(source(join(root, '.env.worker.example'))).toMatch(
-      /# EMBEDDING_STAGE_ENABLED=false/,
+      /^EMBEDDING_STAGE_ENABLED=true$/m,
     )
   })
 

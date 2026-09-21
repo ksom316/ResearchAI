@@ -145,3 +145,16 @@ export function loadEmbeddingConfig(env: Env = process.env): EmbeddingConfig {
     stageEnabled: stage === 'true' || stage === '1',
   }
 }
+
+/** Production continuous workers must index every newly-ready paper. */
+export function loadEnabledEmbeddingConfig(
+  env: Env = process.env,
+): EmbeddingConfig {
+  const config = loadEmbeddingConfig(env)
+  if (!config.stageEnabled) {
+    throw new ConfigError(
+      'EMBEDDING_STAGE_ENABLED must be true for the continuous PDF and embedding worker.',
+    )
+  }
+  return config
+}

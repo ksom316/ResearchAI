@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { ConfigError } from './config'
-import { loadEmbeddingConfig } from './embedding-config'
+import {
+  loadEmbeddingConfig,
+  loadEnabledEmbeddingConfig,
+} from './embedding-config'
 
 // A fake key; the real key is only ever read from .env.worker at runtime.
 const base = {
@@ -115,5 +118,17 @@ describe('loadEmbeddingConfig', () => {
       EMBEDDING_BASE_URL: 'https://evil.example.com',
     })
     expect(Object.keys(config)).not.toContain('baseUrl')
+  })
+
+  it('requires the embedding stage for the persistent production worker', () => {
+    expect(() => loadEnabledEmbeddingConfig(base)).toThrowError(
+      /EMBEDDING_STAGE_ENABLED must be true/,
+    )
+    expect(
+      loadEnabledEmbeddingConfig({
+        ...base,
+        EMBEDDING_STAGE_ENABLED: 'true',
+      }).stageEnabled,
+    ).toBe(true)
   })
 })

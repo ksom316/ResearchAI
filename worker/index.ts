@@ -4,7 +4,7 @@ import { createSupabaseJobStore, createWorkerClient } from './job-store'
 import { abortableSleep, runLoop } from './loop'
 import type { LoopMode } from './loop'
 import { createEmbeddingRunner } from './embedding/create-runner'
-import { loadEmbeddingConfig } from './embedding-config'
+import { loadEnabledEmbeddingConfig } from './embedding-config'
 import { PdfJsExtractor } from './pdf-extractor'
 import { runNextJob } from './run-job'
 import { runScheduler } from './scheduler'
@@ -28,6 +28,10 @@ function parseMode(args: string[]): LoopMode {
 async function main() {
   const mode = parseMode(process.argv.slice(2))
   const config = loadConfig()
+  // Production continuous mode always includes indexing. One-shot/drain commands
+  // remain PDF-only operational tools and therefore do not require Voyage config.
+  const embeddingConfig =
+    mode === 'continuous' ? loadEnabledEmbeddingConfig() : null
 
   const store = createSupabaseJobStore(createWorkerClient(config), config)
   const extractor = new PdfJsExtractor({ timeoutMs: config.jobTimeoutMs })
@@ -47,18 +51,7 @@ async function main() {
   log(
     `worker started (supabase host: ${new URL(config.supabaseUrl).host}, mode: ${mode}, poll ${config.pollIntervalMs / 1000}s, max attempts ${config.maxAttempts})`,
   )
-  // The embedding stage is opt-in (EMBEDDING_STAGE_ENABLED=true) and only runs in
-  // continuous mode. Without it the worker behaves exactly as before.
-  const embeddingConfig = process.env.EMBEDDING_STAGE_ENABLED
-    ? loadEmbeddingConfig()
-    : null
-  if (embeddingConfig?.stageEnabled && mode !== 'continuous') {
-    log(
-      'embedding stage is only run in continuous mode; skipping it for this run',
-    )
-  }
-
-  if (embeddingConfig?.stageEnabled && mode === 'continuous') {
+  if (embeddingConfig) {
     const runner = createEmbeddingRunner({
       client: createWorkerClient(config),
       config: embeddingConfig,
