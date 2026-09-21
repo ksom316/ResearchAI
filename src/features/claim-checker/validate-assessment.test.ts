@@ -100,6 +100,26 @@ describe('Claim Checker assessment validation', () => {
       }),
     ],
     ['one strong and one weak citation', output()],
+    [
+      'one citation supports a proposition while a topical citation is unsupported',
+      output({
+        overall_support: 'partially_supported',
+        summary:
+          'The architecture is supported, but the reported accuracy is not.',
+        unsupported_fragments: ['achieves 99% accuracy'],
+        citation_assessments: [
+          {
+            ...citation('C1', 'partially_supported'),
+            rationale: 'Directly supports the CNN encoder proposition.',
+          },
+          {
+            ...citation('C2', 'unsupported'),
+            rationale:
+              'Mentions the research topic but substantiates no claim proposition.',
+          },
+        ],
+      }),
+    ],
   ])('accepts %s', (_name, modelOutput) => {
     expect(validateClaimAssessment(modelOutput, { request, evidence }).ok).toBe(true)
   })
@@ -133,6 +153,7 @@ describe('Claim Checker assessment validation', () => {
     ['unsupported fragment not in claim', output({ overall_support: 'partially_supported', unsupported_fragments: ['uses a recurrent network'], citation_assessments: [citation('C1', 'partially_supported'), citation('C2', 'unsupported')] })],
     ['supported with unsupported fragment', output({ unsupported_fragments: ['99% accuracy'] })],
     ['supported with no supporting citation', output({ citation_assessments: [citation('C1', 'unsupported'), citation('C2', 'unsupported')] })],
+    ['supported when one citation covers only part and the other is topical', output({ citation_assessments: [citation('C1', 'partially_supported'), citation('C2', 'unsupported')] })],
     ['partial without fragment', output({ overall_support: 'partially_supported', citation_assessments: [citation('C1', 'partially_supported'), citation('C2', 'unsupported')] })],
     ['partial without supportive citation', output({ overall_support: 'partially_supported', unsupported_fragments: ['99% accuracy'], citation_assessments: [citation('C1', 'unsupported'), citation('C2', 'insufficient_evidence')] })],
     ['unsupported with supported citation', output({ overall_support: 'unsupported', unsupported_fragments: [claim], citation_assessments: [citation('C1', 'supported'), citation('C2', 'unsupported')] })],

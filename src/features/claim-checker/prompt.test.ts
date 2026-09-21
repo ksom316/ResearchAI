@@ -30,10 +30,38 @@ describe('Claim Checker prompt', () => {
     expect(CLAIM_CHECK_SYSTEM_PROMPT).toContain('evidence-support assessment')
     expect(CLAIM_CHECK_SYSTEM_PROMPT).toContain('External knowledge')
     expect(CLAIM_CHECK_SYSTEM_PROMPT).toContain('Topical similarity is not support')
-    expect(CLAIM_CHECK_SYSTEM_PROMPT).toContain('every material clause')
+    expect(CLAIM_CHECK_SYSTEM_PROMPT).toContain('every material proposition')
     expect(CLAIM_CHECK_SYSTEM_PROMPT).toContain('every citation independently')
     expect(CLAIM_CHECK_SYSTEM_PROMPT).toContain('collectively')
     expect(CLAIM_CHECK_SYSTEM_PROMPT).toContain('Do not expose chain-of-thought')
+  })
+
+  it('requires proposition-level citation support rather than topical context', () => {
+    expect(CLAIM_CHECK_SYSTEM_PROMPT).toContain(
+      'partially_supported requires direct support for at least one material proposition',
+    )
+    expect(CLAIM_CHECK_SYSTEM_PROMPT).toContain(
+      'Merely mentioning the same topic, entity, field, method, task, or subtask',
+    )
+    expect(CLAIM_CHECK_SYSTEM_PROMPT).toContain(
+      'Classify such merely topical or contextual evidence as unsupported',
+    )
+    expect(CLAIM_CHECK_SYSTEM_PROMPT).toContain(
+      'Never infer a claimed behavior from the name of a task, method, field, or subtask',
+    )
+  })
+
+  it('requires complete collective coverage before supported', () => {
+    expect(CLAIM_CHECK_SYSTEM_PROMPT).toContain('perform a final coverage check')
+    expect(CLAIM_CHECK_SYSTEM_PROMPT).toContain(
+      'every material proposition and every specific detail',
+    )
+    expect(CLAIM_CHECK_SYSTEM_PROMPT).toContain(
+      'overall_support MUST NOT be supported',
+    )
+    expect(CLAIM_CHECK_SYSTEM_PROMPT).toContain(
+      'summary, rationales, classification, and unsupported_fragments must agree',
+    )
   })
 
   it('uses nonce boundaries while neutralizing data-borne C ids and delimiters', () => {
