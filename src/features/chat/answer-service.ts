@@ -26,7 +26,12 @@ export const RETRIEVAL_SETTINGS = {
   includeReferences: false,
 } as const
 
-export const MAX_OUTPUT_TOKENS = 1000
+/**
+ * Bounded headroom for the JSON envelope plus the runtime-supported answer limits.
+ * Reasoning is disabled below so routed reasoning models cannot spend this budget on
+ * hidden reasoning instead of completing the structured response.
+ */
+export const MAX_OUTPUT_TOKENS = 3000
 
 export type AnswerDeps = {
   search: SearchDeps
@@ -117,6 +122,7 @@ export async function runGroundedAnswer(
         }),
         schema: ANSWER_JSON_SCHEMA,
         maxTokens: MAX_OUTPUT_TOKENS,
+        reasoning: { effort: 'none' },
       })
     } catch (error) {
       const errorCode = llmError(error)

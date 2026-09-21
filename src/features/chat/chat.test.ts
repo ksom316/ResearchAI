@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 import type { RpcResult, SearchDb } from '#/features/search/search-service'
 import { LlmError, OpenRouterProvider } from '#/lib/llm'
 import type { LlmProvider, StructuredRequest } from '#/lib/llm'
-import { runGroundedAnswer } from './answer-service'
+import { MAX_OUTPUT_TOKENS, runGroundedAnswer } from './answer-service'
 import {
   buildEvidence,
   EVIDENCE_CHAR_BUDGET,
@@ -758,15 +758,49 @@ describe('json_object mode keeps Phase 5C validation authoritative', () => {
   })
 })
 
-describe('Research Chat sends no reasoning configuration', () => {
-  it('its structured request carries no reasoning key', async () => {
+describe('Research Chat completion configuration', () => {
+  it('uses its bounded 3,000-token budget and disables reasoning', async () => {
     const h = harness()
     const outcome = await h.run()
     expect(outcome.ok).toBe(true)
     expect(h.generate).toHaveBeenCalledTimes(1)
     const req = h.generate.mock.calls[0]?.[0]
     if (!req) throw new Error('no structured request was made')
-    expect(req).not.toHaveProperty('reasoning')
-    expect(Object.keys(req).sort()).toEqual(['maxTokens', 'schema', 'system', 'user'])
+    expect(MAX_OUTPUT_TOKENS).toBe(3000)
+    expect(req.maxTokens).toBe(3000)
+    expect(req.reasoning).toEqual({ effort: 'none' })
+    expect(Object.keys(req).sort()).toEqual([
+      'maxTokens',
+      'reasoning',
+      'schema',
+      'system',
+      'user',
+    ])
+  })
+
+  it('keeps provider truncation fail-closed with one call', async () => {
+    const diagnostics: ResearchChatDiagnostic[] = []
+    const h = harness({
+      diagnostic: (value) => diagnostics.push(value),
+      llm: async () => {
+        throw new LlmError('invalid_response', 'truncated response', undefined, {
+          category: 'truncated',
+          model: 'vendor/free-model',
+          finishReason: 'length',
+        })
+      },
+    })
+
+    expect(await h.run()).toEqual({ ok: false, error: 'answer_unavailable' })
+    expect(h.generate).toHaveBeenCalledTimes(1)
+    expect(diagnostics).toEqual([
+      expect.objectContaining({
+        stage: 'provider',
+        errorCode: 'answer_unavailable',
+        llmKind: 'invalid_response',
+        responseCategory: 'truncated',
+        finishReason: 'length',
+      }),
+    ])
   })
 })

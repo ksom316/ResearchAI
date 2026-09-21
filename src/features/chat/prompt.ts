@@ -17,7 +17,7 @@ Output: a JSON object with
 - explanation: for "insufficient_evidence" / "out_of_scope" only: one short note about the evidence being insufficient or unrelated, otherwise null
 - limitations: for "answered" only: a short note on what the evidence does not cover, or null
 - followUps: up to 3 short follow-up questions, or []
-Be concise (a few short segments). Do not put citation markers in "text"; put ids in "citations".`
+Be concise: use at most 6 segments, keep each segment under 900 characters, and keep all segment text under 4,000 characters total. Keep limitations under 300 characters and follow-up questions brief. Do not put citation markers in "text"; put ids in "citations". Return the complete JSON object without preamble or trailing commentary.`
 
 /**
  * Evidence and question in one user message, inside delimiters that carry a
