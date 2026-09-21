@@ -1,6 +1,7 @@
 import { Outlet, createFileRoute, redirect } from '@tanstack/react-router'
 import { getCurrentUser } from '#/lib/auth/auth.functions'
 import { AppShell } from '#/components/layout/app-shell'
+import { AppLoadingScreen } from '#/components/app-loading-screen'
 
 export const Route = createFileRoute('/_authed')({
   beforeLoad: async ({ location }) => {
@@ -10,6 +11,9 @@ export const Route = createFileRoute('/_authed')({
     }
     return { user }
   },
+  pendingComponent: AppLoadingScreen,
+  pendingMs: 0,
+  pendingMinMs: 0,
   component: AuthedLayout,
 })
 
