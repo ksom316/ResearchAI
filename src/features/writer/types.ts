@@ -89,7 +89,8 @@ export type WriterEvidenceErrorCode =
   | 'retrieval_busy'
   | 'retrieval_unavailable'
 
-type AbstentionStatus = 'no_evidence' | 'insufficient_evidence' | 'stale_only'
+export type WriterAbstentionStatus =
+  'no_evidence' | 'insufficient_evidence' | 'stale_only'
 
 export type WriterEvidenceResult =
   | { ok: false; error: WriterEvidenceErrorCode }
@@ -102,7 +103,69 @@ export type WriterEvidenceResult =
     }
   | {
       ok: true
-      status: AbstentionStatus
+      status: WriterAbstentionStatus
+      request: NormalizedWriterRequest
+      coverage: WriterEvidenceCoverage
+    }
+
+export type GroundedDraftUnit = {
+  /** Assigned by the server after the complete model response is validated. */
+  id: `U${number}`
+  text: string
+  citationIds: WriterEvidenceId[]
+}
+
+export type GroundedDraftParagraph = {
+  units: GroundedDraftUnit[]
+}
+
+export type GroundedDraftCitationSource = {
+  sectionTitle: string
+  sectionType: string
+  pageStart: number | null
+  pageEnd: number | null
+}
+
+/** Server-built metadata only. Evidence text is never copied into the draft response. */
+export type GroundedDraftCitation = {
+  id: WriterEvidenceId
+  paperId: string
+  paperTitle: string
+  locator: WriterEvidenceLocator
+  sources: GroundedDraftCitationSource[]
+}
+
+export type GroundedDraft = {
+  title: string
+  mode: WriterMode
+  paragraphs: GroundedDraftParagraph[]
+  /** Only cited evidence, in order of first use. */
+  citations: GroundedDraftCitation[]
+  coverage: WriterEvidenceCoverage
+}
+
+export type WriterGenerationErrorCode =
+  | WriterEvidenceErrorCode
+  | 'writer_busy'
+  | 'writer_timeout'
+  | 'writer_unavailable'
+  | 'writer_truncated'
+  | 'invalid_output'
+  | 'invalid_citation'
+  | 'invalid_content'
+
+export type WriterGenerationResult =
+  | { ok: false; error: WriterGenerationErrorCode }
+  | {
+      ok: true
+      status: 'generated'
+      draft: GroundedDraft
+    }
+  | {
+      ok: true
+      status: WriterAbstentionStatus
+      stage: 'evidence' | 'generation'
+      explanation: string
       request: NormalizedWriterRequest
       coverage: WriterEvidenceCoverage
     }

@@ -75,6 +75,22 @@ describe('writer request schema', () => {
     },
     {
       projectId: PROJECT,
+      mode: 'methodology_summary',
+      evidence: { items: [{ id: 'W1', promptText: 'forged' }] },
+    },
+    {
+      projectId: PROJECT,
+      mode: 'methodology_summary',
+      model: 'paid/model',
+    },
+    {
+      projectId: PROJECT,
+      mode: 'methodology_summary',
+      provider: 'forged-provider',
+      maxTokens: 99_999,
+    },
+    {
+      projectId: PROJECT,
       mode: 'limitations_future_work',
       gapCandidateId: 'gap:v2:forged',
     },

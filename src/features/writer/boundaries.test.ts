@@ -15,11 +15,17 @@ const code = (file: string) =>
     .replace(/\/\*[^]*?\*\//g, '')
     .replace(/(^|[^:])\/\/.*$/gm, '$1')
 
-describe('Writer evidence security boundaries', () => {
-  it('contains no LLM/provider generation path in Phase 7A.2', () => {
-    for (const file of implementationFiles) {
+describe('Writer security boundaries', () => {
+  it('keeps the 7A.2 evidence foundation provider-independent', () => {
+    for (const file of [
+      'evidence.ts',
+      'sanitize.ts',
+      'schemas.ts',
+      'writer-db.server.ts',
+      'writer-service.ts',
+    ]) {
       expect(code(file), file).not.toMatch(
-        /OpenRouter|generateStructured|generateText|LLM_MODEL|OPENROUTER_API_KEY/,
+        /OpenRouter|generateStructured|generateText|LLM_MODEL|OPENROUTER_API_KEY|lib\/llm/,
       )
     }
   })
@@ -29,6 +35,16 @@ describe('Writer evidence security boundaries', () => {
     expect(fn).toMatch(/createSupabaseServerClient\(\)/)
     expect(fn).not.toMatch(/createClient\(|service.?role/i)
     expect(code('writer-db.server.ts')).not.toMatch(/service.?role/i)
+  })
+
+  it('reads provider configuration only through the existing server-only adapter', () => {
+    const fn = code('writer.functions.ts')
+    expect(fn).toMatch(/createServerLlm\(\)/)
+    for (const file of implementationFiles) {
+      expect(code(file), file).not.toMatch(
+        /OPENROUTER_API_KEY|LLM_MODEL|LLM_STRUCTURED_MODE|process\.env|import\.meta\.env/,
+      )
+    }
   })
 
   it('keeps database access read-only with explicit column lists', () => {
@@ -54,10 +70,17 @@ describe('Writer evidence security boundaries', () => {
     )
   })
 
-  it('keeps generation, persistence, UI, and Gap derivation out of the feature', () => {
+  it('keeps persistence, UI, Gap derivation, and provider logging out of the feature', () => {
     const all = implementationFiles.map(source).join('\n')
     expect(all).not.toMatch(
-      /deriveGapCandidates|research-map|drafts|components\/ui|\.tsx/,
+      /deriveGapCandidates|research-map|components\/ui|\.tsx|\.(insert|update|upsert|delete)\(|console\.(log|error)/,
     )
+  })
+
+  it('the server accepts only raw Writer requests and prepares evidence internally', () => {
+    const fn = code('writer.functions.ts')
+    expect(fn).toMatch(/validator\(\(data: unknown\) => data\)/)
+    expect(fn).toMatch(/prepareWriterEvidence\(request, evidenceDeps\)/)
+    expect(fn).not.toMatch(/data\.(evidence|provider|model|userId)/)
   })
 })
