@@ -13,6 +13,7 @@ import {
   groupUnitCitationsByPaper,
 } from '../presentation'
 import type { GroundedDraft, GroundedDraftCitation } from '../types'
+import type { ClaimCheckClaimId, ClaimCheckResult } from '#/features/claim-checker/types'
 
 export type WriterCitationSelection = {
   citation: GroundedDraftCitation
@@ -26,10 +27,15 @@ export function GroundedDraftView({
   projectId,
   draft,
   onSelectCitation,
+  onClaimCheckResult,
 }: {
   projectId: string
   draft: GroundedDraft
   onSelectCitation: (selection: WriterCitationSelection) => void
+  onClaimCheckResult?: (
+    unitId: ClaimCheckClaimId,
+    result: ClaimCheckResult,
+  ) => void
 }) {
   const [copied, setCopied] = useState(false)
   const numbers = citationNumberMap(draft)
@@ -63,7 +69,7 @@ export function GroundedDraftView({
         {draft.paragraphs.map((paragraph, paragraphIndex) => (
           <p key={paragraphIndex} className="min-w-0 leading-7 break-words">
             {paragraph.units.map((unit, unitIndex) => (
-              <span key={unit.id}>
+              <span key={unit.id} id={`writer-unit-${unit.id}`} tabIndex={-1}>
                 {unitIndex > 0 && ' '}
                 {unit.text}{' '}
                 {groupUnitCitationsByPaper(draft, unit.citationIds).map((group) => {
@@ -97,6 +103,7 @@ export function GroundedDraftView({
                       ? [{ citation, number }]
                       : []
                   })}
+                  onResult={onClaimCheckResult}
                 />
               </span>
             ))}

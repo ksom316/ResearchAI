@@ -13,6 +13,7 @@ import { EvidenceMatrixTab } from '#/features/evidence-matrix/ui/evidence-matrix
 import { ResearchGapsTab } from '#/features/research-gaps/ui/research-gaps-tab'
 import { ResearchMapTab } from '#/features/research-map/ui/research-map-tab'
 import { AcademicWriterTab } from '#/features/writer/ui/academic-writer-tab'
+import { QualityInspectorTab } from '#/features/quality-inspector/ui/quality-inspector-tab'
 import { DeleteProjectDialog } from '../components/delete-project-dialog'
 import { RenameProjectDialog } from '../components/rename-project-dialog'
 import { projectQuery } from '../queries'
@@ -152,6 +153,13 @@ export function ProjectWorkspace({
         </TabsContent>
         <TabsContent value="writing" className="mt-6">
           <AcademicWriterTab key={project.id} projectId={project.id} />
+        </TabsContent>
+        <TabsContent value="quality-inspector" className="mt-6">
+          <QualityInspectorTab
+            key={project.id}
+            projectId={project.id}
+            onNavigate={onTabChange}
+          />
         </TabsContent>
         {WORKSPACE_TABS.filter((t) => t.value in PLACEHOLDERS).map(
           ({ value, icon }) => (

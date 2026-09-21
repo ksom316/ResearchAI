@@ -563,7 +563,7 @@ describe('workspace wiring and boundaries', () => {
   })
 
   it('the other tabs remain present after adding Research Gaps', () => {
-    expect(WORKSPACE_TABS.map((t) => t.value)).toEqual(['overview', 'papers', 'ai-research', 'evidence', 'research-map', 'research-gaps', 'comparisons', 'writing'])
+    expect(WORKSPACE_TABS.map((t) => t.value)).toEqual(['overview', 'papers', 'ai-research', 'evidence', 'research-map', 'research-gaps', 'comparisons', 'writing', 'quality-inspector'])
     const src = read('src/features/projects/workspace/project-workspace.tsx')
     for (const value of ['overview', 'papers', 'ai-research']) {
       expect(src).toContain(`<TabsContent value="${value}"`)

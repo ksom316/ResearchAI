@@ -65,3 +65,10 @@ export type SearchOutcome =
       coverage: PaperCoverage[]
     }
   | { ok: false; error: SearchErrorCode }
+
+export type SearchCoverageOutcome =
+  | { ok: true; coverage: PaperCoverage[] }
+  | {
+      ok: false
+      error: 'invalid_request' | 'unauthenticated' | 'scope_not_found' | 'search_unavailable'
+    }

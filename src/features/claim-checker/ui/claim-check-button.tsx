@@ -7,7 +7,7 @@ import type {
 } from '#/features/writer/types'
 import { checkClaimSupportFn } from '../claim-checker.functions'
 import { buildClaimCheckRequest } from '../presentation'
-import type { ClaimCheckResult } from '../types'
+import type { ClaimCheckClaimId, ClaimCheckResult } from '../types'
 import { ClaimCheckSheet } from './claim-check-sheet'
 
 export type ClaimCheckUnitCitation = {
@@ -19,10 +19,12 @@ export function ClaimCheckButton({
   projectId,
   unit,
   citations,
+  onResult,
 }: {
   projectId: string
   unit: GroundedDraftUnit
   citations: readonly ClaimCheckUnitCitation[]
+  onResult?: (unitId: ClaimCheckClaimId, result: ClaimCheckResult) => void
 }) {
   const [open, setOpen] = useState(false)
   const [checking, setChecking] = useState(false)
@@ -43,9 +45,16 @@ export function ClaimCheckButton({
     setResult(null)
     setChecking(true)
     try {
-      setResult(await checkClaimSupportFn({ data: request }))
+      const nextResult = await checkClaimSupportFn({ data: request })
+      setResult(nextResult)
+      onResult?.(unit.id, nextResult)
     } catch {
-      setResult({ ok: false, error: 'checker_unavailable' })
+      const nextResult: ClaimCheckResult = {
+        ok: false,
+        error: 'checker_unavailable',
+      }
+      setResult(nextResult)
+      onResult?.(unit.id, nextResult)
     } finally {
       setChecking(false)
     }

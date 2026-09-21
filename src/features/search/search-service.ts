@@ -8,10 +8,13 @@ import { searchRequestSchema } from './schemas'
 import type {
   PaperCoverage,
   SearchErrorCode,
+  SearchCoverageOutcome,
   SearchHit,
   SearchOutcome,
   SearchRequest,
 } from './types'
+
+const coverageRequestSchema = z.object({ projectId: z.string().uuid() }).strict()
 
 export type RpcResult = {
   data: unknown
@@ -63,6 +66,18 @@ const coverageRow = z.object({
   chunk_count: z.number(),
 })
 
+/** Shared safe boundary for the authenticated get_search_coverage RPC. */
+export function parseSearchCoverage(value: unknown): PaperCoverage[] | null {
+  const parsed = z.array(coverageRow).safeParse(value)
+  if (!parsed.success) return null
+  return parsed.data.map((row) => ({
+    paperId: row.paper_id,
+    paperTitle: row.paper_title,
+    state: row.state,
+    chunkCount: row.chunk_count,
+  }))
+}
+
 const profileRow = z.object({
   id: z.string(),
   provider: z.string(),
@@ -106,6 +121,38 @@ function rpcError(error: { message: string }): SearchErrorCode {
 
 const fail = (error: SearchErrorCode): SearchOutcome => ({ ok: false, error })
 
+/** Coverage-only path: authenticated RPC inspection with no embedding/provider call. */
+export async function runSearchCoverage(
+  raw: unknown,
+  db: Pick<SearchDb, 'getUserId' | 'coverage'>,
+): Promise<SearchCoverageOutcome> {
+  const request = coverageRequestSchema.safeParse(raw)
+  if (!request.success) return { ok: false, error: 'invalid_request' }
+  try {
+    if (!(await db.getUserId())) return { ok: false, error: 'unauthenticated' }
+    const result = await db.coverage({
+      paperIds: null,
+      projectId: request.data.projectId,
+    })
+    if (result.error) {
+      return {
+        ok: false,
+        error: result.error.message.includes('search_scope_not_found')
+          ? 'scope_not_found'
+          : result.error.message.includes('search_unauthenticated')
+            ? 'unauthenticated'
+            : 'search_unavailable',
+      }
+    }
+    const coverage = parseSearchCoverage(result.data)
+    return coverage
+      ? { ok: true, coverage }
+      : { ok: false, error: 'search_unavailable' }
+  } catch {
+    return { ok: false, error: 'search_unavailable' }
+  }
+}
+
 /**
  * Question -> coverage -> (only if something is searchable) query embedding -> exact
  * cosine retrieval. The provider is never called when no paper in scope is searchable;
@@ -126,14 +173,8 @@ export async function runSemanticSearch(
     const scope = scopeArgs(request)
     const coverageResult = await db.coverage(scope)
     if (coverageResult.error) return fail(rpcError(coverageResult.error))
-    const coverageRows = z.array(coverageRow).safeParse(coverageResult.data)
-    if (!coverageRows.success) return fail('search_unavailable')
-    const coverage: PaperCoverage[] = coverageRows.data.map((row) => ({
-      paperId: row.paper_id,
-      paperTitle: row.paper_title,
-      state: row.state,
-      chunkCount: row.chunk_count,
-    }))
+    const coverage = parseSearchCoverage(coverageResult.data)
+    if (!coverage) return fail('search_unavailable')
 
     if (!coverage.some((paper) => paper.state === 'searchable')) {
       return { ok: true, status: 'nothing_searchable', results: [], coverage }

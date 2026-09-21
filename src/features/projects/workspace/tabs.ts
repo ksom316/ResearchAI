@@ -6,6 +6,7 @@ import {
   Network,
   PenLine,
   Quote,
+  ScanSearch,
   Sparkles,
 } from 'lucide-react'
 
@@ -18,6 +19,7 @@ export const WORKSPACE_TABS = [
   { value: 'research-gaps', label: 'Research Gaps', icon: Lightbulb },
   { value: 'comparisons', label: 'Comparisons', icon: GitCompare },
   { value: 'writing', label: 'Academic Writer', icon: PenLine },
+  { value: 'quality-inspector', label: 'Quality Inspector', icon: ScanSearch },
 ] as const
 
 export type WorkspaceTab = (typeof WORKSPACE_TABS)[number]['value']

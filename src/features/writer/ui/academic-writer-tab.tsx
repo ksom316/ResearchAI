@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { AlertCircle, Loader2, PenLine } from 'lucide-react'
 import { Button } from '#/components/ui/button'
@@ -14,6 +14,16 @@ import { GroundedDraftView } from './grounded-draft-view'
 import type { WriterCitationSelection } from './grounded-draft-view'
 import { WriterCitationSheet } from './writer-citation-sheet'
 import { WriterConfiguration } from './writer-configuration'
+import {
+  applyClaimCheckResult,
+  resetAssessments,
+} from '#/features/quality-inspector/assessment-state'
+import type { AssessmentByUnitId } from '#/features/quality-inspector/assessment-state'
+import { DraftInspectionPanel } from '#/features/quality-inspector/ui/draft-inspection-panel'
+import type {
+  ClaimCheckClaimId,
+  ClaimCheckResult,
+} from '#/features/claim-checker/types'
 
 const INITIAL_FORM: WriterFormState = {
   mode: 'literature_synthesis',
@@ -27,18 +37,24 @@ export function AcademicWriterTab({ projectId }: { projectId: string }) {
   const [result, setResult] = useState<WriterGenerationResult | null>(null)
   const [generating, setGenerating] = useState(false)
   const [selection, setSelection] = useState<WriterCitationSelection | null>(null)
+  const [assessmentsByUnitId, setAssessmentsByUnitId] =
+    useState<AssessmentByUnitId>(resetAssessments)
+  const draftEpoch = useRef(0)
   const request = buildWriterRequest(projectId, form)
 
   function updateForm(next: WriterFormState) {
     setForm(next)
     setResult(null)
     setSelection(null)
+    setAssessmentsByUnitId(resetAssessments())
   }
 
   async function generate() {
     if (!request || generating) return
+    draftEpoch.current += 1
     setResult(null)
     setSelection(null)
+    setAssessmentsByUnitId(resetAssessments())
     setGenerating(true)
     try {
       setResult(await generateWriterDraftFn({ data: request }))
@@ -60,6 +76,16 @@ export function AcademicWriterTab({ projectId }: { projectId: string }) {
   if (papers.error) return <QueryError error={papers.error} onRetry={() => void papers.refetch()} />
 
   const message = result ? writerResultMessage(result) : null
+  const renderedDraftEpoch = draftEpoch.current
+  const recordClaimCheckResult = (
+    unitId: ClaimCheckClaimId,
+    claimResult: ClaimCheckResult,
+  ) => {
+    if (renderedDraftEpoch !== draftEpoch.current) return
+    setAssessmentsByUnitId((current) =>
+      applyClaimCheckResult(current, unitId, claimResult),
+    )
+  }
   return (
     <div className="min-w-0 space-y-5">
       <header className="space-y-1">
@@ -130,11 +156,18 @@ export function AcademicWriterTab({ projectId }: { projectId: string }) {
           </div>
         )}
         {!generating && result?.ok && result.status === 'generated' && (
-          <GroundedDraftView
-            projectId={projectId}
-            draft={result.draft}
-            onSelectCitation={setSelection}
-          />
+          <div className="min-w-0 space-y-4">
+            <GroundedDraftView
+              projectId={projectId}
+              draft={result.draft}
+              onSelectCitation={setSelection}
+              onClaimCheckResult={recordClaimCheckResult}
+            />
+            <DraftInspectionPanel
+              draft={result.draft}
+              assessmentsByUnitId={assessmentsByUnitId}
+            />
+          </div>
         )}
       </section>
 
