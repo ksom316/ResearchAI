@@ -14,6 +14,34 @@ type ResearchChatDiagnosticUsage = {
   reasoningTokens: number | null
 }
 
+type SafeValueKind =
+  | 'object'
+  | 'array'
+  | 'string'
+  | 'number'
+  | 'boolean'
+  | 'null'
+  | 'undefined'
+
+type ResearchChatSchemaIssue = {
+  code: string
+  path: (string | number)[]
+  expected: string | null
+  actualType: SafeValueKind
+}
+
+type ResearchChatSchemaDiagnostic = {
+  category: 'schema_validation'
+  topLevelType: SafeValueKind
+  expectedKeysPresent: Record<
+    'status' | 'segments' | 'explanation' | 'limitations' | 'followUps',
+    boolean
+  >
+  segmentsCount: number | null
+  followUpsCount: number | null
+  issues: ResearchChatSchemaIssue[]
+}
+
 export type ResearchChatDiagnostic = {
   event: 'research_chat_failure'
   stage:
@@ -35,6 +63,7 @@ export type ResearchChatDiagnostic = {
   evidenceItemCount: number | null
   elapsedMs: number
   usage: ResearchChatDiagnosticUsage | null
+  schemaValidation: ResearchChatSchemaDiagnostic | null
 }
 
 const SAFE_IDENTIFIER = /^[A-Za-z0-9_.:/@-]{1,100}$/
@@ -93,6 +122,7 @@ const base = (context: Context): ResearchChatDiagnostic => ({
   evidenceItemCount: safeCount(context.evidenceItemCount),
   elapsedMs: safeCount(context.elapsedMs) ?? 0,
   usage: null,
+  schemaValidation: null,
 })
 
 export function researchChatFailureDiagnostic(
@@ -139,6 +169,97 @@ export function researchChatResultFailureDiagnostic(
     finishReason: safeIdentifier(result.finishReason),
     structuredContentReturned: true,
     usage: resultUsage(result),
+  }
+}
+
+const EXPECTED_KEYS = [
+  'status',
+  'segments',
+  'explanation',
+  'limitations',
+  'followUps',
+] as const
+const SAFE_PATH_KEYS = new Set([...EXPECTED_KEYS, 'text', 'citations'])
+
+const valueKind = (value: unknown): SafeValueKind => {
+  if (value === null) return 'null'
+  if (Array.isArray(value)) return 'array'
+  if (typeof value === 'object') return 'object'
+  if (typeof value === 'string') return 'string'
+  if (typeof value === 'number') return 'number'
+  if (typeof value === 'boolean') return 'boolean'
+  return 'undefined'
+}
+
+const safePath = (path: readonly PropertyKey[]): (string | number)[] =>
+  path.slice(0, 6).map((part) => {
+    if (typeof part === 'number') return safeCount(part) ?? -1
+    return typeof part === 'string' && SAFE_PATH_KEYS.has(part)
+      ? part
+      : '<other>'
+  })
+
+const valueAtPath = (data: unknown, path: readonly PropertyKey[]): unknown => {
+  let value = data
+  for (const part of path) {
+    if (
+      (typeof part !== 'string' && typeof part !== 'number') ||
+      value === null ||
+      typeof value !== 'object'
+    ) {
+      return undefined
+    }
+    value = (value as Record<PropertyKey, unknown>)[part]
+  }
+  return value
+}
+
+/**
+ * Zod issue messages and model values are deliberately excluded. Only whitelisted
+ * schema paths, fixed issue codes, value kinds, key presence, and array sizes survive.
+ */
+export function researchChatSchemaFailureDiagnostic(
+  context: Context,
+  result: StructuredResult,
+  issues: readonly {
+    code: string
+    path: readonly PropertyKey[]
+    expected?: unknown
+  }[],
+): ResearchChatDiagnostic {
+  const data = result.data
+  const record = data
+  const present = Object.fromEntries(
+    EXPECTED_KEYS.map((key) => [
+      key,
+      Object.prototype.hasOwnProperty.call(record, key),
+    ]),
+  ) as ResearchChatSchemaDiagnostic['expectedKeysPresent']
+  const safeIssues = issues.slice(0, 20).map((issue) => ({
+    code: safeIdentifier(issue.code) ?? 'unknown',
+    path: safePath(issue.path),
+    expected: safeIdentifier(issue.expected),
+    actualType: valueKind(valueAtPath(data, issue.path)),
+  }))
+
+  return {
+    ...researchChatResultFailureDiagnostic(
+      'structured_output',
+      context,
+      result,
+    ),
+    schemaValidation: {
+      category: 'schema_validation',
+      topLevelType: valueKind(data),
+      expectedKeysPresent: present,
+      segmentsCount: Array.isArray(record.segments)
+        ? safeCount(record.segments.length)
+        : null,
+      followUpsCount: Array.isArray(record.followUps)
+        ? safeCount(record.followUps.length)
+        : null,
+      issues: safeIssues,
+    },
   }
 }
 

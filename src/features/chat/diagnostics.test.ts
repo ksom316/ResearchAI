@@ -4,6 +4,7 @@ import {
   logResearchChatDiagnostic,
   researchChatProviderFailureDiagnostic,
   researchChatResultFailureDiagnostic,
+  researchChatSchemaFailureDiagnostic,
 } from './diagnostics'
 
 const context = {
@@ -94,5 +95,94 @@ describe('Research Chat safe diagnostics', () => {
       retrievalResultCount: null,
       elapsedMs: 0,
     })
+  })
+
+  it('reports schema shape and issue paths without generated content', () => {
+    const secretAnswer = 'generated answer text that must remain private'
+    const result = {
+      data: {
+        status: 'answered',
+        segments: [{ text: secretAnswer, citations: 'wrong type' }],
+        explanation: null,
+        limitations: null,
+      },
+      provider: 'openrouter',
+      model: 'vendor/model',
+      finishReason: 'stop',
+      usage: null,
+    }
+    const diagnostic = researchChatSchemaFailureDiagnostic(
+      context,
+      result,
+      [
+        {
+          code: 'invalid_type',
+          path: ['segments', 0, 'citations'],
+          expected: 'array',
+        },
+        {
+          code: 'invalid_type',
+          path: ['followUps'],
+          expected: 'array',
+        },
+      ],
+    )
+
+    expect(diagnostic.schemaValidation).toEqual({
+      category: 'schema_validation',
+      topLevelType: 'object',
+      expectedKeysPresent: {
+        status: true,
+        segments: true,
+        explanation: true,
+        limitations: true,
+        followUps: false,
+      },
+      segmentsCount: 1,
+      followUpsCount: null,
+      issues: [
+        {
+          code: 'invalid_type',
+          path: ['segments', 0, 'citations'],
+          expected: 'array',
+          actualType: 'string',
+        },
+        {
+          code: 'invalid_type',
+          path: ['followUps'],
+          expected: 'array',
+          actualType: 'undefined',
+        },
+      ],
+    })
+    expect(JSON.stringify(diagnostic)).not.toContain(secretAnswer)
+    expect(JSON.stringify(diagnostic)).not.toContain('wrong type')
+  })
+
+  it('redacts model-controlled schema paths and expected values', () => {
+    const diagnostic = researchChatSchemaFailureDiagnostic(
+      context,
+      {
+        data: { segments: [] },
+        provider: 'openrouter',
+        model: 'vendor/model',
+        usage: null,
+      },
+      [
+        {
+          code: 'custom',
+          path: ['secret generated field'],
+          expected: 'answer text with spaces',
+        },
+      ],
+    )
+    expect(diagnostic.schemaValidation?.issues).toEqual([
+      {
+        code: 'custom',
+        path: ['<other>'],
+        expected: null,
+        actualType: 'undefined',
+      },
+    ])
   })
 })

@@ -16,6 +16,7 @@ import {
   researchChatFailureDiagnostic,
   researchChatProviderFailureDiagnostic,
   researchChatResultFailureDiagnostic,
+  researchChatSchemaFailureDiagnostic,
 } from './diagnostics'
 import type { ResearchChatDiagnostic } from './diagnostics'
 
@@ -143,8 +144,7 @@ export async function runGroundedAnswer(
     const answer = modelAnswerSchema.safeParse(result.data)
     if (!answer.success) {
       emit(
-        researchChatResultFailureDiagnostic(
-          'structured_output',
+        researchChatSchemaFailureDiagnostic(
           {
             errorCode: 'answer_unavailable',
             retrievalResultCount: search.results.length,
@@ -152,6 +152,7 @@ export async function runGroundedAnswer(
             elapsedMs: elapsedMs(),
           },
           result,
+          answer.error.issues,
         ),
       )
       return fail('answer_unavailable')
