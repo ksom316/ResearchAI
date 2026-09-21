@@ -22,7 +22,11 @@ function plain(value: string): boolean {
   return !FORMATTING.test(value) && !WRITER_ID.test(value)
 }
 
-function consistent(output: ClaimCheckModelOutput): boolean {
+function consistent(
+  output: ClaimCheckModelOutput,
+  normalizedClaim: string,
+  normalizedFragments: readonly string[],
+): boolean {
   const supports = output.citation_assessments.map((entry) => entry.support)
   if (output.overall_support === 'supported') {
     const supportive = supports.filter(
@@ -36,10 +40,9 @@ function consistent(output: ClaimCheckModelOutput): boolean {
   if (output.overall_support === 'partially_supported') {
     return (
       output.unsupported_fragments.length > 0 &&
-      supports.some(
-        (support) =>
-          support === 'supported' || support === 'partially_supported',
-      )
+      !supports.includes('supported') &&
+      supports.includes('partially_supported') &&
+      normalizedFragments.every((fragment) => fragment !== normalizedClaim)
     )
   }
   if (output.overall_support === 'unsupported') {
@@ -92,7 +95,7 @@ export function validateClaimAssessment(
     normalizedFragments.some(
       (fragment) => !fragment || !normalizedClaim.includes(fragment),
     ) ||
-    !consistent(output)
+    !consistent(output, normalizedClaim, normalizedFragments)
   ) {
     return { ok: false, error: 'invalid_assessment' }
   }

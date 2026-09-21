@@ -62,6 +62,15 @@ describe('Claim Checker prompt', () => {
     expect(CLAIM_CHECK_SYSTEM_PROMPT).toContain(
       'summary, rationales, classification, and unsupported_fragments must agree',
     )
+    expect(CLAIM_CHECK_SYSTEM_PROMPT).toContain(
+      'An unsupported citation does not downgrade the collective result',
+    )
+    expect(CLAIM_CHECK_SYSTEM_PROMPT).toContain(
+      'if any citation is supported, overall_support must be supported',
+    )
+    expect(CLAIM_CHECK_SYSTEM_PROMPT).toContain(
+      'never return the entire claim as unsupported',
+    )
   })
 
   it('uses nonce boundaries while neutralizing data-borne C ids and delimiters', () => {

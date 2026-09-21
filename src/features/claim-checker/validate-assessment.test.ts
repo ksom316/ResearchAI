@@ -146,6 +146,41 @@ describe('Claim Checker assessment validation', () => {
     })
   })
 
+  it('accepts collective support from one complete citation despite an unsupported citation', () => {
+    const result = validateClaimAssessment(
+      output({
+        unsupported_fragments: [],
+        citation_assessments: [
+          citation('C1', 'unsupported'),
+          citation('C2', 'supported'),
+        ],
+      }),
+      { request, evidence },
+    )
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      expect(result.assessment.overallSupport).toBe('supported')
+      expect(result.assessment.unsupportedFragments).toEqual([])
+    }
+  })
+
+  it('rejects partial overall when another citation says it supports the complete claim', () => {
+    expect(
+      validateClaimAssessment(
+        output({
+          overall_support: 'partially_supported',
+          summary: 'C2 explicitly supports the complete claim.',
+          unsupported_fragments: [claim],
+          citation_assessments: [
+            citation('C1', 'unsupported'),
+            citation('C2', 'supported'),
+          ],
+        }),
+        { request, evidence },
+      ),
+    ).toEqual({ ok: false, error: 'invalid_assessment' })
+  })
+
   it.each([
     ['invented C id', output({ citation_assessments: [citation('C1', 'supported'), citation('C3', 'unsupported')] })],
     ['duplicate C id', output({ citation_assessments: [citation('C1', 'supported'), citation('C1', 'unsupported')] })],
@@ -155,6 +190,8 @@ describe('Claim Checker assessment validation', () => {
     ['supported with no supporting citation', output({ citation_assessments: [citation('C1', 'unsupported'), citation('C2', 'unsupported')] })],
     ['supported when one citation covers only part and the other is topical', output({ citation_assessments: [citation('C1', 'partially_supported'), citation('C2', 'unsupported')] })],
     ['partial without fragment', output({ overall_support: 'partially_supported', citation_assessments: [citation('C1', 'partially_supported'), citation('C2', 'unsupported')] })],
+    ['partial with a fully supporting citation', output({ overall_support: 'partially_supported', unsupported_fragments: ['99% accuracy'], citation_assessments: [citation('C1', 'supported'), citation('C2', 'unsupported')] })],
+    ['partial with the whole claim unsupported', output({ overall_support: 'partially_supported', unsupported_fragments: [claim], citation_assessments: [citation('C1', 'partially_supported'), citation('C2', 'unsupported')] })],
     ['partial without supportive citation', output({ overall_support: 'partially_supported', unsupported_fragments: ['99% accuracy'], citation_assessments: [citation('C1', 'unsupported'), citation('C2', 'insufficient_evidence')] })],
     ['unsupported with supported citation', output({ overall_support: 'unsupported', unsupported_fragments: [claim], citation_assessments: [citation('C1', 'supported'), citation('C2', 'unsupported')] })],
     ['insufficient with supported citation', output({ overall_support: 'insufficient_evidence' })],
