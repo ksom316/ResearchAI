@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { createElement } from 'react'
 import type { ReactElement, ReactNode } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
@@ -43,6 +44,20 @@ const field = (paperId: string, fieldKey: ExtractionField['fieldKey'], texts: st
 })
 
 describe('VisualMap: presentation states', () => {
+  it('executes memo hooks before every graph-state early return', () => {
+    const source = readFileSync(
+      'src/features/research-map/ui/visual-map.tsx',
+      'utf8',
+    )
+    const emptyReturn = source.indexOf("if (graph.kind === 'empty')")
+    const tooLargeReturn = source.indexOf("if (graph.kind === 'too_large')")
+    const memoHooks = [...source.matchAll(/useMemo\(/g)].map((match) => match.index)
+
+    expect(memoHooks).toHaveLength(2)
+    expect(memoHooks.every((index) => index < emptyReturn)).toBe(true)
+    expect(memoHooks.every((index) => index < tooLargeReturn)).toBe(true)
+  })
+
   it('renders a calm message, not an error, for an empty graph', () => {
     const out = html(createElement(VisualMap, { graph: { kind: 'empty' }, onViewEvidence: noop, onSwitchToIndex: noop }))
     expect(out).toContain('Nothing to show')
@@ -171,12 +186,30 @@ describe('ResearchMapTab: graph/index switching', () => {
     ])
   }
 
-  it('mobile view (md:hidden) always renders the structured index, never the graph canvas', () => {
+  it('mobile defaults to the existing index and offers the visual map', () => {
     const out = render(seedBertLike)
-    const mobileBlock = out.slice(out.indexOf('class="md:hidden"'), out.indexOf('class="hidden space-y-4 md:block"'))
+    const mobileBlock = out.slice(
+      out.indexOf('class="space-y-4 md:hidden"'),
+      out.indexOf('class="hidden space-y-4 md:block"'),
+    )
+    expect(mobileBlock).toContain('Research Map mobile display mode')
+    expect(mobileBlock).toContain('Visual Map')
+    expect(mobileBlock).toContain('Relationship Index')
+    expect(mobileBlock).toMatch(/aria-pressed="true"[^>]*>\s*Relationship Index/)
     expect(mobileBlock).toContain('Relationships')
     expect(mobileBlock).toContain('Papers')
     expect(mobileBlock).not.toContain('react-flow')
+
+    const source = readFileSync(
+      'src/features/research-map/ui/research-map-tab.tsx',
+      'utf8',
+    )
+    const mobileSource = source.slice(
+      source.indexOf('className="space-y-4 md:hidden"'),
+      source.indexOf('className="hidden space-y-4 md:block"'),
+    )
+    expect(mobileSource).toContain("mobileViewMode === 'graph'")
+    expect(mobileSource).toContain('<VisualMap')
   })
 
   it('desktop/tablet block defaults to the graph and offers an explicit switcher to the index', () => {

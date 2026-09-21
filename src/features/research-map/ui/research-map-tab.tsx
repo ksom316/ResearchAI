@@ -57,9 +57,8 @@ export function ResearchMapTab({ projectId }: { projectId: string }) {
   const [kind, setKind] = useState<TermKindFilter>('all')
   const [hideStale, setHideStale] = useState(false)
   const [selection, setSelection] = useState<EvidenceSelection | null>(null)
-  // Desktop/tablet only (see the render below): mobile always shows the structured
-  // index and never mounts the graph, so this default only matters at md+.
   const [viewMode, setViewMode] = useState<ViewMode>('graph')
+  const [mobileViewMode, setMobileViewMode] = useState<ViewMode>('index')
   const [showFindings, setShowFindings] = useState(false)
 
   const state = useMemo(
@@ -158,8 +157,53 @@ export function ResearchMapTab({ projectId }: { projectId: string }) {
             showStaleToggle={state.map.summary.stalePapers > 0}
           />
 
-          {/* Mobile: always the structured index — never a forced graph canvas. */}
-          <div className="md:hidden">{indexView}</div>
+          {/* Mobile keeps the structured index by default and offers the visual map explicitly. */}
+          <div className="space-y-4 md:hidden">
+            <div
+              role="group"
+              aria-label="Research Map mobile display mode"
+              className="flex flex-wrap items-center gap-2"
+            >
+              <Button
+                type="button"
+                size="xs"
+                variant={mobileViewMode === 'graph' ? 'secondary' : 'outline'}
+                aria-pressed={mobileViewMode === 'graph'}
+                onClick={() => setMobileViewMode('graph')}
+              >
+                Visual Map
+              </Button>
+              <Button
+                type="button"
+                size="xs"
+                variant={mobileViewMode === 'index' ? 'secondary' : 'outline'}
+                aria-pressed={mobileViewMode === 'index'}
+                onClick={() => setMobileViewMode('index')}
+              >
+                Relationship Index
+              </Button>
+              {mobileViewMode === 'graph' && (
+                <Button
+                  type="button"
+                  size="xs"
+                  variant={showFindings ? 'secondary' : 'outline'}
+                  aria-pressed={showFindings}
+                  onClick={() => setShowFindings((value) => !value)}
+                >
+                  {showFindings ? 'Hide findings' : 'Show findings'}
+                </Button>
+              )}
+            </div>
+            {mobileViewMode === 'graph' ? (
+              <VisualMap
+                graph={graph}
+                onViewEvidence={setSelection}
+                onSwitchToIndex={() => setMobileViewMode('index')}
+              />
+            ) : (
+              indexView
+            )}
+          </div>
 
           {/* Tablet/desktop: an explicit switcher between the visual map and the index. */}
           <div className="hidden space-y-4 md:block">

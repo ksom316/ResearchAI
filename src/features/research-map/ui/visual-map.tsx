@@ -32,6 +32,53 @@ export function VisualMap({
 }) {
   const [selected, setSelected] = useState<string | null>(null)
 
+  const activeSelected =
+    graph.kind === 'graph' && graph.nodes.some((node) => node.id === selected)
+      ? selected
+      : null
+  const neighborhood =
+    graph.kind === 'graph' && activeSelected
+      ? neighborhoodOf(activeSelected, graph.edges)
+      : null
+
+  const nodes: Node[] = useMemo(
+    () =>
+      graph.kind === 'graph'
+        ? graph.nodes.map((n) => ({
+            id: n.id,
+            type: n.kind,
+            position: n.position,
+            selected: n.id === activeSelected,
+            draggable: false,
+            connectable: false,
+            data: {
+              ...n.data,
+              kind: n.kind,
+              dimmed: neighborhood ? !neighborhood.nodeIds.has(n.id) : false,
+            },
+          }))
+        : [],
+    [graph, activeSelected, neighborhood],
+  )
+
+  const edges: Edge[] = useMemo(
+    () =>
+      graph.kind === 'graph'
+        ? graph.edges.map((e) => ({
+            id: e.id,
+            source: e.source,
+            target: e.target,
+            selectable: true,
+            focusable: true,
+            style: {
+              opacity: neighborhood && !neighborhood.edgeIds.has(e.id) ? 0.15 : 1,
+              strokeWidth: neighborhood?.edgeIds.has(e.id) ? 2 : 1,
+            },
+          }))
+        : [],
+    [graph, neighborhood],
+  )
+
   if (graph.kind === 'empty') {
     return (
       <EmptyState
@@ -56,42 +103,6 @@ export function VisualMap({
       />
     )
   }
-
-  const neighborhood = selected ? neighborhoodOf(selected, graph.edges) : null
-
-  const nodes: Node[] = useMemo(
-    () =>
-      graph.nodes.map((n) => ({
-        id: n.id,
-        type: n.kind,
-        position: n.position,
-        selected: n.id === selected,
-        draggable: false,
-        connectable: false,
-        data: {
-          ...n.data,
-          kind: n.kind,
-          dimmed: neighborhood ? !neighborhood.nodeIds.has(n.id) : false,
-        },
-      })),
-    [graph, selected],
-  )
-
-  const edges: Edge[] = useMemo(
-    () =>
-      graph.edges.map((e) => ({
-        id: e.id,
-        source: e.source,
-        target: e.target,
-        selectable: true,
-        focusable: true,
-        style: {
-          opacity: neighborhood && !neighborhood.edgeIds.has(e.id) ? 0.15 : 1,
-          strokeWidth: neighborhood?.edgeIds.has(e.id) ? 2 : 1,
-        },
-      })),
-    [graph, selected],
-  )
 
   return (
     <div className="space-y-2">

@@ -267,6 +267,26 @@ describe('buildGraphViewModel: filter integration (reuses the 6B.3 view-model fi
     if (g.kind !== 'graph') throw new Error('expected graph')
     expect(g.nodes.some((n) => n.kind !== 'paper')).toBe(false)
   })
+
+  it('supports populated, no-match, clear, and repeated search transitions', () => {
+    const graphFor = (search: string) =>
+      buildGraphViewModel(
+        filterTermIndex(allEntries, {
+          kind: 'all',
+          search,
+          hideStale: false,
+        }),
+        filterPaperSummaries(allRows, search),
+        { showFindings: false },
+      )
+
+    expect(graphFor('bert').kind).toBe('graph')
+    expect(graphFor('no-such-paper-or-term').kind).toBe('empty')
+    expect(graphFor('').kind).toBe('graph')
+    expect(graphFor('roberta').kind).toBe('graph')
+    expect(graphFor('still-no-match').kind).toBe('empty')
+    expect(graphFor('').kind).toBe('graph')
+  })
 })
 
 describe('buildGraphViewModel: large-corpus safety', () => {
