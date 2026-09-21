@@ -64,6 +64,8 @@ export type ResearchChatDiagnostic = {
   elapsedMs: number
   usage: ResearchChatDiagnosticUsage | null
   schemaValidation: ResearchChatSchemaDiagnostic | null
+  /** Flat primitive for log viewers that collapse nested issue objects. */
+  schemaIssueSummary: string | null
 }
 
 const SAFE_IDENTIFIER = /^[A-Za-z0-9_.:/@-]{1,100}$/
@@ -123,6 +125,7 @@ const base = (context: Context): ResearchChatDiagnostic => ({
   elapsedMs: safeCount(context.elapsedMs) ?? 0,
   usage: null,
   schemaValidation: null,
+  schemaIssueSummary: null,
 })
 
 export function researchChatFailureDiagnostic(
@@ -180,6 +183,14 @@ const EXPECTED_KEYS = [
   'followUps',
 ] as const
 const SAFE_PATH_KEYS = new Set([...EXPECTED_KEYS, 'text', 'citations'])
+const SAFE_EXPECTED_TYPES = new Set([
+  'array',
+  'object',
+  'string',
+  'number',
+  'boolean',
+  'null',
+])
 
 const valueKind = (value: unknown): SafeValueKind => {
   if (value === null) return 'null'
@@ -238,9 +249,26 @@ export function researchChatSchemaFailureDiagnostic(
   const safeIssues = issues.slice(0, 20).map((issue) => ({
     code: safeIdentifier(issue.code) ?? 'unknown',
     path: safePath(issue.path),
-    expected: safeIdentifier(issue.expected),
+    expected:
+      typeof issue.expected === 'string' &&
+      SAFE_EXPECTED_TYPES.has(issue.expected)
+        ? issue.expected
+        : null,
     actualType: valueKind(valueAtPath(data, issue.path)),
   }))
+  const schemaIssueSummary = safeIssues
+    .map((issue) => {
+      const path = issue.path
+        .map((part) => (typeof part === 'number' ? `[${part}]` : part))
+        .join('.')
+        .replace(/\.\[/g, '[')
+      return `${issue.code}|path=${path || '<root>'}|expected=${issue.expected ?? 'n/a'}|actual=${issue.actualType}`.slice(
+        0,
+        180,
+      )
+    })
+    .join('; ')
+    .slice(0, 2_000)
 
   return {
     ...researchChatResultFailureDiagnostic(
@@ -260,6 +288,7 @@ export function researchChatSchemaFailureDiagnostic(
         : null,
       issues: safeIssues,
     },
+    schemaIssueSummary: schemaIssueSummary || null,
   }
 }
 

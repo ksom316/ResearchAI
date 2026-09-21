@@ -155,6 +155,9 @@ describe('Research Chat safe diagnostics', () => {
         },
       ],
     })
+    expect(diagnostic.schemaIssueSummary).toBe(
+      'invalid_type|path=segments[0].citations|expected=array|actual=string; invalid_type|path=followUps|expected=array|actual=undefined',
+    )
     expect(JSON.stringify(diagnostic)).not.toContain(secretAnswer)
     expect(JSON.stringify(diagnostic)).not.toContain('wrong type')
   })
@@ -184,5 +187,33 @@ describe('Research Chat safe diagnostics', () => {
         actualType: 'undefined',
       },
     ])
+    expect(diagnostic.schemaIssueSummary).toBe(
+      'custom|path=<other>|expected=n/a|actual=undefined',
+    )
+  })
+
+  it('bounds the flat issue summary and never copies issue messages or values', () => {
+    const secret = 'MODEL_GENERATED_SECRET_TEXT'
+    const diagnostic = researchChatSchemaFailureDiagnostic(
+      context,
+      {
+        data: { status: secret, segments: [] },
+        provider: 'openrouter',
+        model: 'vendor/model',
+        usage: null,
+      },
+      Array.from({ length: 40 }, () => ({
+        code: 'invalid_value',
+        path: [secret, secret, secret],
+        expected: secret,
+        message: secret,
+      })),
+    )
+
+    expect(diagnostic.schemaIssueSummary?.length).toBeLessThanOrEqual(2_000)
+    expect(diagnostic.schemaIssueSummary).toContain(
+      'invalid_value|path=<other>.<other>.<other>|expected=n/a|actual=undefined',
+    )
+    expect(JSON.stringify(diagnostic)).not.toContain(secret)
   })
 })
