@@ -665,12 +665,13 @@ describe('chat boundaries', () => {
 
   it('leaves Phase 4 retrieval migrations untouched', () => {
     const migrations = readdirSync(join(root, 'supabase/migrations')).sort()
-    // 0008 (retrieval) is followed only by the Phase 6A evidence-matrix migration.
-    expect(migrations.slice(-4)).toEqual([
+    // 0008 (retrieval) is followed only by the approved Phase 6A and 7C migrations.
+    expect(migrations.slice(-5)).toEqual([
       '0008_semantic_search.sql',
       '0009_evidence_matrix_foundation.sql',
       '0010_evidence_matrix_worker.sql',
       '0011_evidence_matrix_worker_fix.sql',
+      '0012_citation_metadata.sql',
     ])
   })
 })

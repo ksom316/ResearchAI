@@ -15,7 +15,10 @@ const papers = Array.from({ length: 2 }, (_, index) => ({
   id: `${index + 1}`,
   project_ids: ['project'],
   title: `A very long paper title ${index + 1}`,
-  authors: [], publication_year: null, original_filename: null, mime_type: null,
+  authors: [], publication_year: null, citation_title: null,
+  citation_container_title: null, citation_publisher: null, citation_doi: null,
+  citation_url: null, citation_volume: null, citation_issue: null,
+  citation_pages: null, original_filename: null, mime_type: null,
   storage_path: null, content_hash: null, file_size_bytes: null,
   status: 'ready' as const, page_count: null, processing_error: null, created_at: '',
 }))
@@ -27,6 +30,14 @@ const draft: GroundedDraft = {
     { id: 'W1', paperId: '1', paperTitle: 'First paper', locator: { kind: 'chunk', paperId: '1', chunkId: 'c1', sectionId: 's1' }, sources: [] },
     { id: 'W2', paperId: '1', paperTitle: 'First paper', locator: { kind: 'chunk', paperId: '1', chunkId: 'c2', sectionId: 's1' }, sources: [] },
   ],
+  references: [{
+    number: 1, paperId: '1', evidenceIds: ['W1', 'W2'],
+    metadata: {
+      paperId: '1', title: 'First paper', authors: [], publicationYear: null,
+      containerTitle: null, publisher: null, doi: null, url: null,
+      volume: null, issue: null, pages: null,
+    },
+  }],
   coverage: { projectPaperCount: 2, selectedPaperCount: 0, participatingPaperCount: 1, unavailablePaperCount: 1, evidenceItemCount: 2 },
 }
 
@@ -56,11 +67,27 @@ describe('Academic Writer UI', () => {
     }))
     expect(html).toContain('Grounded result.')
     expect(html).toContain('>[1]</button>')
-    expect(html).toContain('>[2]</button>')
+    expect((html.match(/>\[1\]<\/button>/g) ?? []).length).toBe(1)
+    expect(html).not.toContain('>[2]</button>')
     expect(html).not.toContain('>W1<')
     expect(html).not.toContain('>U1<')
     expect(html).toContain('break-words')
     expect(html).toContain('>Check support</button>')
+    expect(html).toContain('>References</h3>')
+    expect(html).toContain('Incomplete citation metadata')
+    expect(html).toContain('View cited evidence for reference 1')
+    expect(html).toContain('Open paper for reference 1')
+  })
+
+  it('collapses visible same-paper markers without collapsing Claim Checker evidence', () => {
+    const presentation = read('features/writer/ui/grounded-draft-view.tsx')
+    expect(presentation).toContain('groupUnitCitationsByPaper(draft, unit.citationIds)')
+    expect(presentation).toContain('unit.citationIds.flatMap')
+    expect(presentation).toContain('citations: group.citations')
+    const checker = read('features/claim-checker/ui/claim-check-button.tsx')
+    expect(checker).toContain('citations.map(({ citation })')
+    expect(checker).toContain('citationId: citation.id')
+    expect(checker).toContain('locator: citation.locator')
   })
 
   it('keeps provenance lazy and exposes accessible Sheet and Open paper wiring', () => {
@@ -70,6 +97,8 @@ describe('Academic Writer UI', () => {
     expect(sheet).toContain('<SheetDescription>')
     expect(sheet).toContain('Open paper')
     expect(sheet).toContain('overflow-y-auto')
+    expect(sheet).toContain('Cited evidence items')
+    expect(sheet).toContain('setActiveId')
   })
 
   it('browser generation sends only the normalized request to the server function', () => {

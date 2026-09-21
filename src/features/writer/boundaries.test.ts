@@ -35,6 +35,7 @@ describe('Writer security boundaries', () => {
     expect(fn).toMatch(/createSupabaseServerClient\(\)/)
     expect(fn).not.toMatch(/createClient\(|service.?role/i)
     expect(code('writer-db.server.ts')).not.toMatch(/service.?role/i)
+    expect(code('writer-reference-db.server.ts')).not.toMatch(/service.?role/i)
   })
 
   it('reads provider configuration only through the existing server-only adapter', () => {
@@ -49,9 +50,14 @@ describe('Writer security boundaries', () => {
 
   it('keeps database access read-only with explicit column lists', () => {
     const db = code('writer-db.server.ts')
+    const references = code('writer-reference-db.server.ts')
     expect(db).not.toMatch(/\.select\(['"]\*['"]\)/)
     expect(db).not.toMatch(/\.(insert|update|upsert|delete)\(/)
     expect(db).not.toMatch(/chunk_embeddings|storage_path|user_id/)
+    expect(references).toContain('.select(WRITER_REFERENCE_COLUMNS)')
+    expect(references).not.toMatch(
+      /\.select\(['"]\*['"]\)|\.(insert|update|upsert|delete)\(|service.?role|storage_path|user_id/,
+    )
     expect(
       [...db.matchAll(/\.from\('([a-z_]+)'\)/g)].map((match) => match[1]),
     ).toEqual([

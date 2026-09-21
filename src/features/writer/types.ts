@@ -1,4 +1,5 @@
 import type { FieldKey } from '#/features/evidence-matrix/types'
+import type { PaperCitationMetadata } from '#/features/citations/types'
 
 export const WRITER_MODES = [
   'literature_synthesis',
@@ -135,14 +136,26 @@ export type GroundedDraftCitation = {
   sources: GroundedDraftCitationSource[]
 }
 
+/** One server-owned academic reference; evidence identities remain unmerged. */
+export type GroundedDraftReference = {
+  number: number
+  paperId: string
+  metadata: PaperCitationMetadata
+  evidenceIds: WriterEvidenceId[]
+}
+
 export type GroundedDraft = {
   title: string
   mode: WriterMode
   paragraphs: GroundedDraftParagraph[]
   /** Only cited evidence, in order of first use. */
   citations: GroundedDraftCitation[]
+  /** One entry per cited paper, in first-use order. */
+  references: GroundedDraftReference[]
   coverage: WriterEvidenceCoverage
 }
+
+export type ValidatedGroundedDraft = Omit<GroundedDraft, 'references'>
 
 export type WriterGenerationErrorCode =
   | WriterEvidenceErrorCode

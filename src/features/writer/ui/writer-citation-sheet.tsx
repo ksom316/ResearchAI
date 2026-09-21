@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { FileText, Loader2 } from 'lucide-react'
+import { useState } from 'react'
 import { QueryError } from '#/components/query-error'
 import { Badge } from '#/components/ui/badge'
 import { Button } from '#/components/ui/button'
@@ -13,7 +14,7 @@ import {
 import { SourceCard } from '#/features/evidence-matrix/ui/source-card'
 import { humanize } from '#/lib/format'
 import { getWriterCitationProvenanceFn } from '../writer.functions'
-import type { WriterSourceRecord } from '../types'
+import type { GroundedDraftCitation, WriterSourceRecord } from '../types'
 import type { WriterCitationSelection } from './grounded-draft-view'
 
 function WriterSource({ source }: { source: WriterSourceRecord }) {
@@ -52,21 +53,23 @@ function WriterSource({ source }: { source: WriterSourceRecord }) {
 function CitationDetail({
   projectId,
   selection,
+  citation,
 }: {
   projectId: string
   selection: WriterCitationSelection
+  citation: GroundedDraftCitation
 }) {
   const query = useQuery({
     queryKey: [
       'writer',
       'provenance',
       projectId,
-      selection.citation.paperId,
-      selection.citation.locator,
+      citation.paperId,
+      citation.locator,
     ],
     queryFn: () =>
       getWriterCitationProvenanceFn({
-        data: { projectId, locator: selection.citation.locator },
+        data: { projectId, locator: citation.locator },
       }),
     staleTime: 60_000,
   })
@@ -75,7 +78,7 @@ function CitationDetail({
     <div className="space-y-6">
       <header className="space-y-2 pr-6">
         <Badge variant="secondary">Citation [{selection.number}]</Badge>
-        <SheetTitle className="break-words">{selection.citation.paperTitle}</SheetTitle>
+        <SheetTitle className="break-words">{citation.paperTitle}</SheetTitle>
         <SheetDescription>
           Evidence used for this generated statement. Citation presence does not by itself prove semantic entailment.
         </SheetDescription>
@@ -144,11 +147,51 @@ function CitationDetail({
       <Button asChild variant="outline" size="sm">
         <Link
           to="/papers/$paperId"
-          params={{ paperId: selection.citation.paperId }}
+          params={{ paperId: citation.paperId }}
         >
           <FileText aria-hidden="true" /> Open paper
         </Link>
       </Button>
+    </div>
+  )
+}
+
+function CitationGroup({
+  projectId,
+  selection,
+}: {
+  projectId: string
+  selection: WriterCitationSelection
+}) {
+  const available = selection.citations?.length
+    ? selection.citations
+    : [selection.citation]
+  const [activeId, setActiveId] = useState(selection.citation.id)
+  const active = available.find((citation) => citation.id === activeId) ?? available[0]
+  return (
+    <div className="space-y-5">
+      {available.length > 1 && (
+        <section className="space-y-2" aria-labelledby="writer-evidence-items">
+          <h3 id="writer-evidence-items" className="text-sm font-semibold">
+            Cited evidence items
+          </h3>
+          <div className="flex flex-wrap gap-2">
+            {available.map((citation, index) => (
+              <Button
+                key={citation.id}
+                type="button"
+                size="sm"
+                variant={citation.id === active.id ? 'secondary' : 'outline'}
+                aria-label={`Inspect evidence item ${index + 1} for citation ${selection.number}`}
+                onClick={() => setActiveId(citation.id)}
+              >
+                Evidence {index + 1}
+              </Button>
+            ))}
+          </div>
+        </section>
+      )}
+      <CitationDetail projectId={projectId} selection={selection} citation={active} />
     </div>
   )
 }
@@ -169,7 +212,11 @@ export function WriterCitationSheet({
         className="w-full gap-0 overflow-y-auto p-6 sm:max-w-2xl"
       >
         {selection && (
-          <CitationDetail projectId={projectId} selection={selection} />
+          <CitationGroup
+            key={`${selection.number}:${selection.citation.id}`}
+            projectId={projectId}
+            selection={selection}
+          />
         )}
       </SheetContent>
     </Sheet>

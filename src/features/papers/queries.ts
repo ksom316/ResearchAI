@@ -15,6 +15,8 @@ import {
   unlinkPaperFromProject,
   uploadPaper,
 } from './api'
+import { updateCitationMetadataFn } from './citation-metadata.functions'
+import type { CitationMetadataUpdateRequest } from './citation-metadata-service'
 import { isInProgress } from './status'
 import type { Paper } from './types'
 
@@ -151,5 +153,20 @@ export function useOpenPaper() {
       }
     },
     onError: errorToast,
+  })
+}
+
+export function useUpdateCitationMetadata() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: CitationMetadataUpdateRequest) =>
+      updateCitationMetadataFn({ data: input }),
+    onSuccess: async (result, input) => {
+      if (!result.ok) return
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: paperKeys.detail(input.paperId) }),
+        queryClient.invalidateQueries({ queryKey: paperKeys.all }),
+      ])
+    },
   })
 }

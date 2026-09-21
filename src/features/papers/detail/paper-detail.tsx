@@ -16,6 +16,7 @@ import { STATUS_INFO } from '../status'
 import type { Paper } from '../types'
 import { PaperOutline } from './paper-outline'
 import { PaperStatusCard } from './paper-status-card'
+import { CitationMetadataCard } from './citation-metadata-card'
 
 const back = (
   <Link
@@ -117,6 +118,7 @@ function PaperDetailContent({ paper }: { paper: Paper }) {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="min-w-0 space-y-6">
           <PaperStatusCard paper={paper} />
+          <CitationMetadataCard paper={paper} />
           {paper.status === 'ready' && <PaperOutline paperId={paper.id} />}
         </div>
         <PaperDetails paper={paper} />

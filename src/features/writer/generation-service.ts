@@ -1,5 +1,6 @@
 import { LlmError } from '#/lib/llm'
 import type { LlmProvider, ReasoningConfig } from '#/lib/llm'
+import type { PaperCitationMetadata } from '#/features/citations/types'
 import {
   logWriterGenerationDiagnostic,
   writerProviderFailureDiagnostic,
@@ -15,6 +16,10 @@ import type {
   WriterGenerationResult,
 } from './types'
 import { validateWriterDraft } from './validate-draft'
+import {
+  attachGroundedDraftReferences,
+  citedPaperIds,
+} from './references'
 
 export const MAX_WRITER_OUTPUT_TOKENS = 1_800
 export const WRITER_REASONING: ReasoningConfig = { effort: 'none' }
@@ -34,6 +39,10 @@ export const WRITER_ABSTENTION_EXPLANATIONS: Record<
 export type WriterGenerationDeps = {
   prepareEvidence: (raw: unknown) => Promise<WriterEvidenceResult>
   getLlm: () => LlmProvider
+  /** Production always supplies an RLS-scoped loader; optional for isolated unit tests. */
+  loadReferenceMetadata?: (
+    paperIds: readonly string[],
+  ) => Promise<PaperCitationMetadata[]>
   nonce?: () => string
   signal?: AbortSignal
   diagnosticsEnabled?: boolean
@@ -154,5 +163,17 @@ export async function generateWriterDraft(
       coverage: prepared.coverage,
     }
   }
-  return { ok: true, status: 'generated', draft: validated.draft }
+  let metadata: PaperCitationMetadata[] = []
+  try {
+    metadata = deps.loadReferenceMetadata
+      ? await deps.loadReferenceMetadata(citedPaperIds(validated.draft))
+      : []
+  } catch {
+    return { ok: false, error: 'retrieval_unavailable' }
+  }
+  return {
+    ok: true,
+    status: 'generated',
+    draft: attachGroundedDraftReferences(validated.draft, metadata),
+  }
 }

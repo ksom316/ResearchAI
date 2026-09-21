@@ -51,6 +51,28 @@ const draft: GroundedDraft = {
       sources: [],
     },
   ],
+  references: [
+    {
+      number: 1,
+      paperId: '11111111-1111-4111-8111-111111111111',
+      evidenceIds: ['W1'],
+      metadata: {
+        paperId: '11111111-1111-4111-8111-111111111111', title: 'A long first paper title',
+        authors: [], publicationYear: null, containerTitle: null, publisher: null,
+        doi: null, url: null, volume: null, issue: null, pages: null,
+      },
+    },
+    {
+      number: 2,
+      paperId: '22222222-2222-4222-8222-222222222222',
+      evidenceIds: ['W2'],
+      metadata: {
+        paperId: '22222222-2222-4222-8222-222222222222', title: 'A long second paper title',
+        authors: [], publicationYear: null, containerTitle: null, publisher: null,
+        doi: null, url: null, volume: null, issue: null, pages: null,
+      },
+    },
+  ],
   coverage: {
     projectPaperCount: 2,
     selectedPaperCount: 2,

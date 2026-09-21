@@ -2,17 +2,17 @@ import { writerModelOutputSchema } from './generation-schema'
 import { evidenceIdentity } from './evidence'
 import { writerDraftTitle } from './prompt'
 import type {
-  GroundedDraft,
   GroundedDraftCitation,
   NormalizedWriterRequest,
   WriterEvidenceCoverage,
   WriterEvidenceId,
   WriterEvidenceItem,
   WriterEvidencePacket,
+  ValidatedGroundedDraft,
 } from './types'
 
 export type DraftValidation =
-  | { ok: true; status: 'generated'; draft: GroundedDraft }
+  | { ok: true; status: 'generated'; draft: ValidatedGroundedDraft }
   | { ok: true; status: 'insufficient_evidence' }
   | {
       ok: false

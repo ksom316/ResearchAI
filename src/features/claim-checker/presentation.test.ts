@@ -42,6 +42,21 @@ describe('Claim Checker presentation', () => {
     ).toBeNull()
   })
 
+  it('preserves every evidence selector when UI numbering collapses the paper', () => {
+    const secondLocator = {
+      ...locator,
+      chunkId: '55555555-5555-4555-8555-555555555555',
+    }
+    const request = buildClaimCheckRequest(projectId, 'U2', 'Compound claim.', [
+      { citationId: 'W1', locator },
+      { citationId: 'W2', locator: secondLocator },
+    ])
+    expect(request?.citations).toEqual([
+      { citationId: 'W1', locator },
+      { citationId: 'W2', locator: secondLocator },
+    ])
+  })
+
   it('uses conservative evidence-support labels', () => {
     expect(CLAIM_SUPPORT_LABELS).toEqual({
       supported: 'Supported by cited evidence',

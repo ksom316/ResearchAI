@@ -157,6 +157,51 @@ describe('Writer generation service', () => {
     expect(call.system).toContain('ONLY the supplied Writer evidence')
   })
 
+  it('loads server-owned metadata only after validation and returns cited papers only', async () => {
+    const fake = provider(async () => structuredResult(generated))
+    const loadReferenceMetadata = vi.fn(async () => [
+      {
+        paperId: P2, title: 'Canonical Beta', authors: ['Beta Author'], publicationYear: 2023,
+        containerTitle: null, publisher: null, doi: null, url: null,
+        volume: null, issue: null, pages: null,
+      },
+      {
+        paperId: P1, title: 'Canonical Alpha', authors: ['Alpha Author'], publicationYear: 2024,
+        containerTitle: null, publisher: null, doi: null, url: null,
+        volume: null, issue: null, pages: null,
+      },
+      {
+        paperId: 'uncited', title: 'Uncited', authors: [], publicationYear: null,
+        containerTitle: null, publisher: null, doi: null, url: null,
+        volume: null, issue: null, pages: null,
+      },
+    ])
+    const result = await generateWriterDraft({}, {
+      prepareEvidence: async () => ready,
+      getLlm: () => fake.llm,
+      loadReferenceMetadata,
+    })
+    expect(loadReferenceMetadata).toHaveBeenCalledOnce()
+    expect(loadReferenceMetadata).toHaveBeenCalledWith([P1, P2])
+    expect(result.ok && result.status === 'generated' && result.draft.references).toEqual([
+      expect.objectContaining({ number: 1, paperId: P1, evidenceIds: ['W1'] }),
+      expect.objectContaining({ number: 2, paperId: P2, evidenceIds: ['W2'] }),
+    ])
+    const providerRequest = fake.generateStructured.mock.calls[0][0]
+    expect(providerRequest.user).not.toMatch(/citation_title|citation_doi|Canonical Alpha|Alpha Author/)
+  })
+
+  it('does not load reference metadata for rejected model output', async () => {
+    const fake = provider(async () => structuredResult({ status: 'generated', paragraphs: [] }))
+    const loadReferenceMetadata = vi.fn()
+    await expect(generateWriterDraft({}, {
+      prepareEvidence: async () => ready,
+      getLlm: () => fake.llm,
+      loadReferenceMetadata,
+    })).resolves.toEqual({ ok: false, error: 'invalid_output' })
+    expect(loadReferenceMetadata).not.toHaveBeenCalled()
+  })
+
   it('accepts provider abstention only with a fixed server-owned explanation', async () => {
     const fake = provider(async () =>
       structuredResult({ status: 'insufficient_evidence', paragraphs: [] }),

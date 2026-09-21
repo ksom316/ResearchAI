@@ -52,6 +52,9 @@ const html = (el: ReactElement) => renderToStaticMarkup(el)
 
 const paper = (id: string, title = `Paper ${id.slice(-1)}`): Paper => ({
   id, project_ids: ['proj'], title, authors: [], publication_year: null,
+  citation_title: null, citation_container_title: null, citation_publisher: null,
+  citation_doi: null, citation_url: null, citation_volume: null,
+  citation_issue: null, citation_pages: null,
   original_filename: null, mime_type: null, storage_path: null, content_hash: null,
   file_size_bytes: null, status: 'ready', page_count: null, processing_error: null,
   created_at: '2026-01-01T00:00:00Z',

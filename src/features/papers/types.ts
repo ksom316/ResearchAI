@@ -6,6 +6,14 @@ export type Paper = {
   title: string
   authors: string[]
   publication_year: number | null
+  citation_title: string | null
+  citation_container_title: string | null
+  citation_publisher: string | null
+  citation_doi: string | null
+  citation_url: string | null
+  citation_volume: string | null
+  citation_issue: string | null
+  citation_pages: string | null
   original_filename: string | null
   mime_type: string | null
   storage_path: string | null

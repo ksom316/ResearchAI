@@ -10,6 +10,7 @@ import { createSupabaseServerClient } from '#/lib/supabase/supabase.server'
 import { generateWriterDraft } from './generation-service'
 import type { WriterEvidenceResult, WriterGenerationResult } from './types'
 import { createSupabaseWriterDb } from './writer-db.server'
+import { loadWriterReferenceMetadata } from './writer-reference-db.server'
 import { prepareWriterEvidence } from './writer-service'
 import { resolveWriterProvenance } from './provenance'
 import type { WriterProvenanceResult } from './provenance'
@@ -46,6 +47,8 @@ export const generateWriterDraftFn = createServerFn({ method: 'POST' })
       prepareEvidence: (request) =>
         prepareWriterEvidence(request, evidenceDeps),
       getLlm: () => createServerLlm(),
+      loadReferenceMetadata: (paperIds) =>
+        loadWriterReferenceMetadata(supabase, paperIds),
       diagnosticsEnabled: isServerDevelopment(),
     })
   })

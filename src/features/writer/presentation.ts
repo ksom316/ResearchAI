@@ -1,10 +1,13 @@
 import type { Paper } from '#/features/papers/types'
+import { formatNumericDraftCopy } from '#/features/citations/format'
 import { writerRequestSchema } from './schemas'
 import type {
   GroundedDraft,
+  GroundedDraftCitation,
   NormalizedWriterRequest,
   WriterGenerationErrorCode,
   WriterGenerationResult,
+  WriterEvidenceId,
   WriterMode,
 } from './types'
 
@@ -76,25 +79,51 @@ export function toggleWriterPaper(
 }
 
 export function citationNumberMap(draft: GroundedDraft): Map<string, number> {
-  return new Map(draft.citations.map((citation, index) => [citation.id, index + 1]))
+  return new Map(
+    draft.references.flatMap((reference) =>
+      reference.evidenceIds.map((evidenceId) => [evidenceId, reference.number]),
+    ),
+  )
 }
 
 export function formatDraftForCopy(draft: GroundedDraft): string {
+  return formatNumericDraftCopy(
+    draft,
+    draft.references.map((reference) => reference.metadata),
+  )
+}
+
+export type UnitPaperCitationGroup = {
+  number: number
+  paperId: string
+  paperTitle: string
+  citations: [GroundedDraftCitation, ...GroundedDraftCitation[]]
+}
+
+/** Collapses display markers by paper without dropping any evidence citation. */
+export function groupUnitCitationsByPaper(
+  draft: GroundedDraft,
+  citationIds: readonly WriterEvidenceId[],
+): UnitPaperCitationGroup[] {
   const numbers = citationNumberMap(draft)
-  return draft.paragraphs
-    .map((paragraph) =>
-      paragraph.units
-        .map((unit) => {
-          const citations = unit.citationIds
-            .map((id) => numbers.get(id))
-            .filter((value): value is number => value !== undefined)
-            .map((value) => `[${value}]`)
-            .join(' ')
-          return `${unit.text}${citations ? ` ${citations}` : ''}`
-        })
-        .join(' '),
-    )
-    .join('\n\n')
+  const citations = new Map(draft.citations.map((citation) => [citation.id, citation]))
+  const groups = new Map<number, UnitPaperCitationGroup>()
+  for (const id of citationIds) {
+    const citation = citations.get(id)
+    const number = numbers.get(id)
+    if (!citation || number === undefined) continue
+    const existing = groups.get(number)
+    if (existing) existing.citations.push(citation)
+    else {
+      groups.set(number, {
+        number,
+        paperId: citation.paperId,
+        paperTitle: citation.paperTitle,
+        citations: [citation],
+      })
+    }
+  }
+  return [...groups.values()]
 }
 
 export const WRITER_ERROR_MESSAGES: Record<WriterGenerationErrorCode, string> = {

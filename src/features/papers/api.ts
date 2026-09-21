@@ -9,7 +9,7 @@ import {
 } from './validation'
 
 const COLUMNS =
-  'id, title, authors, publication_year, original_filename, mime_type, storage_path, content_hash, file_size_bytes, status, page_count, processing_error, created_at'
+  'id, title, authors, publication_year, citation_title, citation_container_title, citation_publisher, citation_doi, citation_url, citation_volume, citation_issue, citation_pages, original_filename, mime_type, storage_path, content_hash, file_size_bytes, status, page_count, processing_error, created_at'
 
 type PaperRow = Omit<Paper, 'project_ids'> & {
   paper_project_links: { project_id: string }[]
