@@ -285,6 +285,49 @@ describe('Writer generation service', () => {
     }
   })
 
+  it('reports safe provider diagnostics without changing the returned error', async () => {
+    const logDiagnostic = vi.fn()
+    const fake = provider(async () => {
+      throw new LlmError(
+        'provider_error',
+        'raw provider response containing secret evidence',
+        503,
+        {
+          category: 'empty',
+          model: 'openrouter/free',
+          finishReason: null,
+          usage: { promptTokens: 321, completionTokens: 0 },
+        },
+      )
+    })
+
+    const result = await generateWriterDraft(
+      {},
+      {
+        prepareEvidence: async () => ready,
+        getLlm: () => fake.llm,
+        logDiagnostic,
+      },
+    )
+
+    expect(result).toEqual({ ok: false, error: 'writer_unavailable' })
+    expect(logDiagnostic).toHaveBeenCalledOnce()
+    expect(logDiagnostic).toHaveBeenCalledWith(
+      expect.objectContaining({
+        mode: 'findings_synthesis',
+        layer: 'provider',
+        errorCode: 'writer_unavailable',
+        llmKind: 'provider_error',
+        httpStatus: 503,
+        model: 'openrouter/free',
+        structuredContentReturned: false,
+      }),
+    )
+    expect(JSON.stringify(logDiagnostic.mock.calls)).not.toMatch(
+      /secret evidence|raw provider response/i,
+    )
+  })
+
   it('passes browser input only to authenticated evidence preparation', async () => {
     const raw = {
       projectId: PROJECT,

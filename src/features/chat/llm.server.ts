@@ -9,6 +9,13 @@ import type { LlmProvider, StructuredMode } from '#/lib/llm'
  */
 export const LLM_TIMEOUT_MS = 75_000
 
+/** Centralized server-environment check for opt-in development diagnostics. */
+export function isServerDevelopment(
+  env: Record<string, string | undefined> = process.env,
+): boolean {
+  return env.NODE_ENV === 'development'
+}
+
 const PLACEHOLDER =
   /your|placeholder|changeme|change-me|example|xxx|\.\.\.|<|>/i
 /** OpenRouter model slugs look like "vendor/model-name[:variant]". */

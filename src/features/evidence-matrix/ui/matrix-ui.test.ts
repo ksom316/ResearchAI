@@ -551,7 +551,7 @@ describe('workspace wiring and boundaries', () => {
     const src = read('src/features/projects/workspace/project-workspace.tsx')
     expect(src).toMatch(/<TabsContent value="evidence"[^>]*>\s*<EvidenceMatrixTab key=\{project\.id\} projectId=\{project\.id\} \/>/)
     const placeholders = src.slice(src.indexOf('const PLACEHOLDERS'), src.indexOf('export function ProjectWorkspace'))
-    expect([...placeholders.matchAll(/^ {2}(\w+): \{/gm)].map((m) => m[1])).toEqual(['comparisons', 'writing'])
+    expect([...placeholders.matchAll(/^ {2}(\w+): \{/gm)].map((m) => m[1])).toEqual(['comparisons'])
   })
 
   it('the other tabs remain present after adding Research Gaps', () => {

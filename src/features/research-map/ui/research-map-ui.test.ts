@@ -352,7 +352,7 @@ describe('workspace wiring', () => {
       expect(src).toContain(`<TabsContent value="${value}"`)
     }
     const placeholders = src.slice(src.indexOf('const PLACEHOLDERS'), src.indexOf('export function ProjectWorkspace'))
-    expect([...placeholders.matchAll(/^ {2}(\w+): \{/gm)].map((m) => m[1])).toEqual(['comparisons', 'writing'])
+    expect([...placeholders.matchAll(/^ {2}(\w+): \{/gm)].map((m) => m[1])).toEqual(['comparisons'])
   })
 
   it('does not touch the tab strip overflow-fix classes', () => {

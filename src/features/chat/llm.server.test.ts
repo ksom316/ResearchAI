@@ -2,12 +2,19 @@ import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import { LlmError } from '#/lib/llm'
-import { createServerLlm } from './llm.server'
+import { createServerLlm, isServerDevelopment } from './llm.server'
 
 const KEY = 'sk-or-v1-0123456789abcdef0123456789abcdef'
 const okEnv = { OPENROUTER_API_KEY: KEY, LLM_MODEL: 'vendor/test-model' }
 
 describe('createServerLlm (env adapter)', () => {
+  it('reports development mode only for the explicit server environment', () => {
+    expect(isServerDevelopment({ NODE_ENV: 'development' })).toBe(true)
+    expect(isServerDevelopment({ NODE_ENV: 'test' })).toBe(false)
+    expect(isServerDevelopment({ NODE_ENV: 'production' })).toBe(false)
+    expect(isServerDevelopment({})).toBe(false)
+  })
+
   it('builds a provider from server env and sends the configured model', async () => {
     const fetchFn = vi.fn(
       async (_url: string, _init: RequestInit) =>

@@ -12,6 +12,7 @@ import { ChatPanel } from '#/features/chat/ui/chat-panel'
 import { EvidenceMatrixTab } from '#/features/evidence-matrix/ui/evidence-matrix-tab'
 import { ResearchGapsTab } from '#/features/research-gaps/ui/research-gaps-tab'
 import { ResearchMapTab } from '#/features/research-map/ui/research-map-tab'
+import { AcademicWriterTab } from '#/features/writer/ui/academic-writer-tab'
 import { DeleteProjectDialog } from '../components/delete-project-dialog'
 import { RenameProjectDialog } from '../components/rename-project-dialog'
 import { projectQuery } from '../queries'
@@ -26,11 +27,6 @@ const PLACEHOLDERS = {
     title: 'Comparisons',
     description:
       'Compare methods, datasets, and results across papers side by side.',
-  },
-  writing: {
-    title: 'Writing',
-    description:
-      'Draft with citation-grounded assistance tied to your evidence.',
   },
 } as const
 
@@ -153,6 +149,9 @@ export function ProjectWorkspace({
         </TabsContent>
         <TabsContent value="research-gaps" className="mt-6">
           <ResearchGapsTab key={project.id} projectId={project.id} />
+        </TabsContent>
+        <TabsContent value="writing" className="mt-6">
+          <AcademicWriterTab key={project.id} projectId={project.id} />
         </TabsContent>
         {WORKSPACE_TABS.filter((t) => t.value in PLACEHOLDERS).map(
           ({ value, icon }) => (

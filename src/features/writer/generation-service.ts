@@ -1,5 +1,11 @@
 import { LlmError } from '#/lib/llm'
 import type { LlmProvider, ReasoningConfig } from '#/lib/llm'
+import {
+  logWriterGenerationDiagnostic,
+  writerProviderFailureDiagnostic,
+  writerResultFailureDiagnostic,
+} from './diagnostics.server'
+import type { WriterGenerationDiagnostic } from './diagnostics.server'
 import { WRITER_DRAFT_JSON_SCHEMA } from './generation-schema'
 import { buildWriterUserMessage, WRITER_SYSTEM_PROMPT } from './prompt'
 import type {
@@ -30,6 +36,19 @@ export type WriterGenerationDeps = {
   getLlm: () => LlmProvider
   nonce?: () => string
   signal?: AbortSignal
+  diagnosticsEnabled?: boolean
+  logDiagnostic?: (diagnostic: WriterGenerationDiagnostic) => void
+}
+
+function reportDiagnostic(
+  deps: WriterGenerationDeps,
+  diagnostic: WriterGenerationDiagnostic,
+): void {
+  if (deps.logDiagnostic) {
+    deps.logDiagnostic(diagnostic)
+    return
+  }
+  logWriterGenerationDiagnostic(diagnostic, deps.diagnosticsEnabled)
 }
 
 function providerError(error: unknown): WriterGenerationErrorCode {
@@ -87,10 +106,24 @@ export async function generateWriterDraft(
       signal: deps.signal,
     })
   } catch (error) {
-    return { ok: false, error: providerError(error) }
+    const errorCode = providerError(error)
+    reportDiagnostic(
+      deps,
+      writerProviderFailureDiagnostic(prepared.request.mode, errorCode, error),
+    )
+    return { ok: false, error: errorCode }
   }
 
   if (result.finishReason === 'length') {
+    reportDiagnostic(
+      deps,
+      writerResultFailureDiagnostic(
+        prepared.request.mode,
+        'structured_response',
+        'writer_truncated',
+        result,
+      ),
+    )
     return { ok: false, error: 'writer_truncated' }
   }
 
@@ -99,7 +132,18 @@ export async function generateWriterDraft(
     evidence: prepared.evidence,
     coverage: prepared.coverage,
   })
-  if (!validated.ok) return validated
+  if (!validated.ok) {
+    reportDiagnostic(
+      deps,
+      writerResultFailureDiagnostic(
+        prepared.request.mode,
+        'validation',
+        validated.error,
+        result,
+      ),
+    )
+    return validated
+  }
   if (validated.status === 'insufficient_evidence') {
     return {
       ok: true,

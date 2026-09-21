@@ -17,7 +17,7 @@ export const WORKSPACE_TABS = [
   { value: 'research-map', label: 'Research Map', icon: Network },
   { value: 'research-gaps', label: 'Research Gaps', icon: Lightbulb },
   { value: 'comparisons', label: 'Comparisons', icon: GitCompare },
-  { value: 'writing', label: 'Writing', icon: PenLine },
+  { value: 'writing', label: 'Academic Writer', icon: PenLine },
 ] as const
 
 export type WorkspaceTab = (typeof WORKSPACE_TABS)[number]['value']
