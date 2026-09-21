@@ -26,10 +26,20 @@ export const WRITER_SOURCE_COLUMNS =
   'paper_id, schema_version, field_key, item_index, ord, chunk_id, section_id, section_title, section_type, page_start, page_end, excerpt'
 export const WRITER_CHUNK_COLUMNS =
   'id, paper_id, section_id, text, page_start, page_end'
+export const WRITER_SECTION_COLUMNS =
+  'id, paper_id, title, section_type, page_start, page_end'
 
 const BATCH_SIZE = 100
 
 export type WriterProject = { id: string; title: string }
+export type WriterSectionRecord = {
+  id: string
+  paperId: string
+  title: string
+  sectionType: string
+  pageStart: number | null
+  pageEnd: number | null
+}
 
 export type WriterDb = {
   getUserId: () => Promise<string | null>
@@ -47,6 +57,9 @@ export type WriterDb = {
     fieldKeys: readonly FieldKey[],
   ) => Promise<ExtractionSource[]>
   listChunks: (chunkIds: readonly string[]) => Promise<WriterLiveChunk[]>
+  listSections: (
+    sectionIds: readonly string[],
+  ) => Promise<WriterSectionRecord[]>
 }
 
 const projectRow = z.object({ id: z.string(), title: z.string() })
@@ -95,6 +108,14 @@ const chunkRow = z.object({
   paper_id: z.string(),
   section_id: z.string(),
   text: z.string(),
+  page_start: z.number().nullable(),
+  page_end: z.number().nullable(),
+})
+const sectionRow = z.object({
+  id: z.string(),
+  paper_id: z.string(),
+  title: z.string(),
+  section_type: z.string(),
   page_start: z.number().nullable(),
   page_end: z.number().nullable(),
 })
@@ -290,6 +311,30 @@ export function createSupabaseWriterDb(supabase: SupabaseLike): WriterDb {
             paperId: value.paper_id,
             sectionId: value.section_id,
             text: value.text,
+            pageStart: value.page_start,
+            pageEnd: value.page_end,
+          },
+        ]
+      })
+    },
+
+    listSections: async (sectionIds) => {
+      const rows = await loadBatches(sectionIds, (batch) =>
+        supabase
+          .from('paper_sections')
+          .select(WRITER_SECTION_COLUMNS)
+          .in('id', batch),
+      )
+      return rows.flatMap((row) => {
+        const parsed = sectionRow.safeParse(row)
+        if (!parsed.success) return []
+        const value = parsed.data
+        return [
+          {
+            id: value.id,
+            paperId: value.paper_id,
+            title: value.title,
+            sectionType: value.section_type,
             pageStart: value.page_start,
             pageEnd: value.page_end,
           },

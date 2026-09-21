@@ -61,6 +61,7 @@ describe('Writer security boundaries', () => {
       'paper_extraction_fields',
       'paper_extraction_sources',
       'paper_chunks',
+      'paper_sections',
     ])
   })
 

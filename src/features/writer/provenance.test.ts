@@ -31,21 +31,20 @@ function db(overrides: Partial<WriterDb> = {}): WriterDb {
       id: CHUNK, paperId: PAPER, sectionId: SECTION, text: 'Live supporting text.',
       pageStart: 3, pageEnd: 3,
     }]),
+    listSections: vi.fn(async () => [{
+      id: SECTION, paperId: PAPER, title: 'Results', sectionType: 'results',
+      pageStart: 3, pageEnd: 3,
+    }]),
     ...overrides,
   }
 }
-
-const getSection = vi.fn(async () => ({
-  id: SECTION, paperId: PAPER, title: 'Results', sectionType: 'results',
-  pageStart: 3, pageEnd: 3,
-}))
 
 describe('lazy Writer provenance', () => {
   it('revalidates project linkage and resolves chunk evidence', async () => {
     const result = await resolveWriterProvenance({
       projectId: PROJECT,
       locator: { kind: 'chunk', paperId: PAPER, chunkId: CHUNK, sectionId: SECTION },
-    }, { db: db(), getSection })
+    }, { db: db() })
     expect(result).toMatchObject({
       ok: true,
       provenance: { kind: 'chunk', paperId: PAPER, claimText: null },
@@ -60,7 +59,7 @@ describe('lazy Writer provenance', () => {
         kind: 'extraction_claim', paperId: PAPER, schemaVersion: 1,
         fieldKey: 'findings', itemIndex: 0,
       },
-    }, { db: db(), getSection })
+    }, { db: db() })
     expect(result).toMatchObject({
       ok: true,
       provenance: {
@@ -74,7 +73,7 @@ describe('lazy Writer provenance', () => {
     const unlinked = await resolveWriterProvenance({
       projectId: PROJECT,
       locator: { kind: 'chunk', paperId: PAPER, chunkId: CHUNK, sectionId: SECTION },
-    }, { db: db({ listProjectPapers: vi.fn(async () => []) }), getSection })
+    }, { db: db({ listProjectPapers: vi.fn(async () => []) }) })
     expect(unlinked).toEqual({ ok: false, error: 'not_found' })
 
     const stale = await resolveWriterProvenance({
@@ -90,7 +89,7 @@ describe('lazy Writer provenance', () => {
           completedAt: '2026-01-01', provider: null, model: null, createdAt: '2026-01-01',
           updatedAt: '2026-01-01', isStale: true,
         }]),
-      }), getSection,
+      }),
     })
     expect(stale).toEqual({ ok: false, error: 'not_found' })
   })
@@ -98,7 +97,7 @@ describe('lazy Writer provenance', () => {
   it('rejects malformed locator input before database access', async () => {
     const mocked = db()
     const result = await resolveWriterProvenance({ projectId: PROJECT, locator: { kind: 'chunk' } }, {
-      db: mocked, getSection,
+      db: mocked,
     })
     expect(result).toEqual({ ok: false, error: 'invalid_request' })
     expect(mocked.getUserId).not.toHaveBeenCalled()

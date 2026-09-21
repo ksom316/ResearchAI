@@ -94,6 +94,7 @@ function fakeDb(overrides: Partial<WriterDb> = {}): WriterDb {
         .filter((item) => fieldKeys.includes(item.fieldKey))
         .map((item) => source(item.paperId, item.fieldKey)),
     listChunks: async () => [],
+    listSections: async () => [],
     ...overrides,
   }
 }

@@ -1,8 +1,25 @@
 import { z } from 'zod'
+import { FIELD_KEYS } from '#/features/evidence-matrix/fields'
 import { sanitizeWriterText } from './sanitize'
 
 export const MAX_WRITER_FOCUS_CHARS = 500
 export const MAX_WRITER_PAPERS = 5
+
+export const writerEvidenceLocatorSchema = z.discriminatedUnion('kind', [
+  z.strictObject({
+    kind: z.literal('chunk'),
+    paperId: z.uuid().transform((value) => value.toLowerCase()),
+    chunkId: z.uuid().transform((value) => value.toLowerCase()),
+    sectionId: z.uuid().transform((value) => value.toLowerCase()),
+  }),
+  z.strictObject({
+    kind: z.literal('extraction_claim'),
+    paperId: z.uuid().transform((value) => value.toLowerCase()),
+    schemaVersion: z.number().int().positive(),
+    fieldKey: z.enum(FIELD_KEYS),
+    itemIndex: z.number().int().min(0),
+  }),
+])
 
 const projectId = z.uuid().transform((value) => value.toLowerCase())
 const focus = z

@@ -57,23 +57,5 @@ export const getWriterCitationProvenanceFn = createServerFn({ method: 'POST' })
     const supabase = createSupabaseServerClient()
     return resolveWriterProvenance(data, {
       db: createSupabaseWriterDb(supabase),
-      getSection: async (paperId, sectionId) => {
-        const { data: row, error } = await supabase
-          .from('paper_sections')
-          .select('id, paper_id, title, section_type, page_start, page_end')
-          .eq('id', sectionId)
-          .eq('paper_id', paperId)
-          .maybeSingle()
-        if (error) throw new Error('Writer provenance unavailable')
-        if (!row) return null
-        return {
-          id: row.id,
-          paperId: row.paper_id,
-          title: row.title,
-          sectionType: row.section_type,
-          pageStart: row.page_start,
-          pageEnd: row.page_end,
-        }
-      },
     })
   })
