@@ -13,6 +13,7 @@ import {
 import { SYSTEM_PROMPT } from './prompt'
 import { askRequestSchema, modelAnswerSchema } from './schemas'
 import type { SearchHit } from '#/features/search/types'
+import type { ResearchChatDiagnostic } from './diagnostics'
 
 const P1 = '11111111-1111-4111-8111-111111111111'
 const MODEL = 'voyage-4:1024:ctx-v1'
@@ -61,6 +62,7 @@ function harness(
     coverageState?: string
     searchError?: string
     llm?: (req: StructuredRequest) => Promise<{ data: Record<string, unknown> }>
+    diagnostic?: (value: ResearchChatDiagnostic) => void
   } = {},
 ) {
   const ok = (data: unknown): RpcResult => ({ data, error: null })
@@ -126,6 +128,7 @@ function harness(
         search: { db, embedQuery },
         getLlm,
         nonce: () => 'NONCE123',
+        diagnostic: options.diagnostic,
       }),
   }
 }
@@ -558,6 +561,25 @@ describe('prompt injection boundaries', () => {
 })
 
 describe('error mapping', () => {
+  it('emits the exact failing stage without changing the safe result', async () => {
+    const diagnostics: ResearchChatDiagnostic[] = []
+    const h = harness({
+      diagnostic: (value) => diagnostics.push(value),
+      llm: async () => ({ data: { malformed: true } }),
+    })
+    expect(await h.run()).toEqual({ ok: false, error: 'answer_unavailable' })
+    expect(diagnostics).toHaveLength(1)
+    expect(diagnostics[0]).toMatchObject({
+      event: 'research_chat_failure',
+      stage: 'structured_output',
+      errorCode: 'answer_unavailable',
+      provider: 'fake',
+      model: 'fake',
+      retrievalResultCount: 3,
+      evidenceItemCount: 3,
+    })
+  })
+
   it.each([
     ['auth', 'answer_unavailable'],
     ['rate_limited', 'answer_busy'],

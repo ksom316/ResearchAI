@@ -4,6 +4,7 @@ import { createSupabaseSearchDb } from '#/features/search/search-db'
 import { createSupabaseServerClient } from '#/lib/supabase/supabase.server'
 import { runGroundedAnswer } from './answer-service'
 import { createServerLlm } from './llm.server'
+import { logResearchChatDiagnostic } from './diagnostics'
 import type { AskOutcome } from './types'
 
 /**
@@ -21,5 +22,6 @@ export const askResearchFn = createServerFn({ method: 'POST' })
         embedQuery: (query) => embedSearchQuery(query),
       },
       getLlm: () => createServerLlm(),
+      diagnostic: logResearchChatDiagnostic,
     }),
   )
