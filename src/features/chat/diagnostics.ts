@@ -5,7 +5,24 @@ import type {
   LlmFailureCategory,
   StructuredResult,
 } from '#/lib/llm'
+import {
+  UsageAllowanceCheckError,
+  UsageAllowanceExceededError,
+} from '#/lib/usage/types'
 import type { ChatErrorCode } from './types'
+
+export type ResearchChatFailureCategory =
+  | 'configuration'
+  | 'allowance'
+  | 'request_construction'
+  | 'network'
+  | 'provider_auth'
+  | 'provider_rate_limit'
+  | 'provider_unavailable'
+  | 'provider_response'
+  | 'structured_parse'
+  | 'usage_recording'
+  | 'unexpected'
 
 type ResearchChatDiagnosticUsage = {
   promptTokens: number | null
@@ -15,13 +32,7 @@ type ResearchChatDiagnosticUsage = {
 }
 
 type SafeValueKind =
-  | 'object'
-  | 'array'
-  | 'string'
-  | 'number'
-  | 'boolean'
-  | 'null'
-  | 'undefined'
+  'object' | 'array' | 'string' | 'number' | 'boolean' | 'null' | 'undefined'
 
 type ResearchChatSchemaIssue = {
   code: string
@@ -47,16 +58,27 @@ export type ResearchChatDiagnostic = {
   stage:
     | 'request_validation'
     | 'retrieval'
+    | 'configuration'
+    | 'allowance'
+    | 'request_construction'
+    | 'network'
     | 'provider'
+    | 'provider_response'
     | 'structured_output'
+    | 'structured_parse'
     | 'citation_validation'
     | 'unexpected'
   errorCode: ChatErrorCode
-  llmKind: LlmErrorKind | 'unexpected' | null
+  failureCategory: ResearchChatFailureCategory | null
+  llmKind: LlmErrorKind | 'allowance' | 'unexpected' | null
   responseCategory: LlmFailureCategory | null
   httpStatus: number | null
   provider: string | null
+  requestedModel: string | null
   model: string | null
+  providerCode: string | null
+  requestSent: boolean | null
+  responseContentPresent: boolean | null
   finishReason: string | null
   structuredContentReturned: boolean | null
   retrievalResultCount: number | null
@@ -113,11 +135,16 @@ const base = (context: Context): ResearchChatDiagnostic => ({
   event: 'research_chat_failure',
   stage: 'unexpected',
   errorCode: context.errorCode,
+  failureCategory: null,
   llmKind: null,
   responseCategory: null,
   httpStatus: null,
   provider: null,
+  requestedModel: null,
   model: null,
+  providerCode: null,
+  requestSent: null,
+  responseContentPresent: null,
   finishReason: null,
   structuredContentReturned: null,
   retrievalResultCount: safeCount(context.retrievalResultCount),
@@ -138,12 +165,61 @@ export function researchChatFailureDiagnostic(
 export function researchChatProviderFailureDiagnostic(
   context: Context,
   error: unknown,
+  providerContext: {
+    provider?: string
+    requestedModel?: string
+  } = {},
 ): ResearchChatDiagnostic {
   const llmError = error instanceof LlmError ? error : null
+  const allowanceCheckError =
+    error instanceof UsageAllowanceCheckError ? error : null
+  const allowanceError =
+    allowanceCheckError !== null || error instanceof UsageAllowanceExceededError
+  const failureCategory: ResearchChatFailureCategory =
+    allowanceCheckError?.kind === 'configuration'
+      ? 'configuration'
+      : allowanceError
+        ? 'allowance'
+        : llmError?.kind === 'configuration'
+          ? llmError.diagnostic?.stage === 'request_construction'
+            ? 'request_construction'
+            : 'configuration'
+          : llmError?.kind === 'auth'
+            ? 'provider_auth'
+            : llmError?.kind === 'rate_limited'
+              ? 'provider_rate_limit'
+              : llmError?.kind === 'timeout' || llmError?.kind === 'aborted'
+                ? 'network'
+                : llmError?.kind === 'provider_error'
+                  ? llmError.diagnostic?.stage === 'network'
+                    ? 'network'
+                    : 'provider_unavailable'
+                  : llmError?.kind === 'invalid_response'
+                    ? llmError.diagnostic?.stage === 'structured_parse'
+                      ? 'structured_parse'
+                      : 'provider_response'
+                    : 'unexpected'
+  const stage: ResearchChatDiagnostic['stage'] =
+    failureCategory === 'configuration'
+      ? 'configuration'
+      : failureCategory === 'allowance'
+        ? 'allowance'
+        : failureCategory === 'request_construction'
+          ? 'request_construction'
+          : failureCategory === 'network'
+            ? 'network'
+            : failureCategory === 'provider_response'
+              ? 'provider_response'
+              : failureCategory === 'structured_parse'
+                ? 'structured_parse'
+                : failureCategory === 'unexpected'
+                  ? 'unexpected'
+                  : 'provider'
   return {
     ...base(context),
-    stage: 'provider',
-    llmKind: llmError?.kind ?? 'unexpected',
+    stage,
+    failureCategory,
+    llmKind: allowanceError ? 'allowance' : (llmError?.kind ?? 'unexpected'),
     responseCategory: llmError?.diagnostic?.category ?? null,
     httpStatus:
       llmError?.status &&
@@ -152,7 +228,23 @@ export function researchChatProviderFailureDiagnostic(
       llmError.status <= 599
         ? llmError.status
         : null,
+    provider:
+      safeIdentifier(llmError?.diagnostic?.provider) ??
+      safeIdentifier(providerContext.provider),
+    requestedModel:
+      safeIdentifier(llmError?.diagnostic?.requestedModel) ??
+      safeIdentifier(providerContext.requestedModel),
     model: safeIdentifier(llmError?.diagnostic?.model),
+    providerCode: safeIdentifier(llmError?.diagnostic?.providerCode),
+    requestSent: allowanceError
+      ? false
+      : typeof llmError?.diagnostic?.requestSent === 'boolean'
+        ? llmError.diagnostic.requestSent
+        : null,
+    responseContentPresent:
+      typeof llmError?.diagnostic?.responseContentPresent === 'boolean'
+        ? llmError.diagnostic.responseContentPresent
+        : null,
     finishReason: safeIdentifier(llmError?.diagnostic?.finishReason),
     structuredContentReturned: false,
     usage: diagnosticUsage(llmError?.diagnostic?.usage),
@@ -167,8 +259,12 @@ export function researchChatResultFailureDiagnostic(
   return {
     ...base(context),
     stage,
+    failureCategory: 'structured_parse',
     provider: safeIdentifier(result.provider),
+    requestedModel: null,
     model: safeIdentifier(result.model),
+    requestSent: true,
+    responseContentPresent: true,
     finishReason: safeIdentifier(result.finishReason),
     structuredContentReturned: true,
     usage: resultUsage(result),

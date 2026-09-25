@@ -1,6 +1,10 @@
 import { getSupabaseBrowserClient } from '#/lib/supabase/client'
 import { getSignedUrl, removeObject, uploadObject } from './storage'
-import { releaseStorageReservation, reserveStorageUpload } from './storage-quota'
+import {
+  authorizePaperUpload,
+  releaseStorageReservation,
+  reserveStorageUpload,
+} from './storage-quota'
 import type { Paper, PaperSection } from './types'
 import {
   PDF_MIME,
@@ -158,6 +162,11 @@ export async function uploadPaper(input: {
     throw new Error('Your session has expired. Please sign in again.')
   }
   const userId = userData.user.id
+
+  const authorizedUserId = await authorizePaperUpload(input.projectId)
+  if (authorizedUserId !== userId) {
+    throw new Error('Your session has expired. Please sign in again.')
+  }
 
   const hash = await hashFile(input.file)
   const existing = await findByHash(hash)

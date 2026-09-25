@@ -6,7 +6,8 @@ import { runSearchCoverage, runSemanticSearch } from './search-service'
 import type { SearchCoverageOutcome, SearchOutcome } from './types'
 import { searchRequestSchema } from './schemas'
 import { createBestEffortServerUsageRecorder } from '#/lib/usage/recorder.server'
-import { requireProjectEditor } from '#/lib/projects/authorization.server'
+import { requireProjectViewer } from '#/lib/projects/authorization.server'
+import { logSemanticSearchDiagnostic } from './diagnostics.server'
 
 /**
  * Explicit, authenticated semantic search (never called on keystroke). Input is
@@ -22,7 +23,7 @@ export const semanticSearchFn = createServerFn({ method: 'POST' })
       parsed.success && parsed.data.scope.type === 'project'
         ? parsed.data.scope.projectId
         : null
-    if (projectId) await requireProjectEditor(supabase, projectId)
+    if (projectId) await requireProjectViewer(supabase, projectId)
     const recordUsage = createBestEffortServerUsageRecorder()
     return runSemanticSearch(data, {
       db: createSupabaseSearchDb(supabase),
@@ -35,6 +36,7 @@ export const semanticSearchFn = createServerFn({ method: 'POST' })
               recordUsage,
             })
           : embedSearchQuery(query),
+      diagnostic: logSemanticSearchDiagnostic,
     })
   })
 
@@ -43,7 +45,5 @@ export const searchCoverageFn = createServerFn({ method: 'GET' })
   .validator((data: unknown) => data)
   .handler(async ({ data }): Promise<SearchCoverageOutcome> => {
     const supabase = createSupabaseServerClient()
-    const parsed = searchRequestSchema.safeParse(data)
-    if (parsed.success && parsed.data.scope.type === 'project') await requireProjectEditor(supabase, parsed.data.scope.projectId)
     return runSearchCoverage(data, createSupabaseSearchDb(supabase))
   })

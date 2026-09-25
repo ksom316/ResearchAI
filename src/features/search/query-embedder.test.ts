@@ -38,7 +38,10 @@ describe('embedSearchQuery (fake fetch, no real Voyage)', () => {
 
   it('records provider-reported query tokens with the trusted actor and project', async () => {
     const events: UsageEventInput[] = []
-    vi.stubGlobal('fetch', vi.fn(async () => okResponse()))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => okResponse()),
+    )
     await embedSearchQuery(
       'What is BERT?',
       { EMBEDDING_API_KEY: 'pa-test-key-not-real-000000' },
@@ -61,30 +64,59 @@ describe('embedSearchQuery (fake fetch, no real Voyage)', () => {
         inputTokens: 4,
         totalTokens: 4,
         quantity: 1,
+        metadata: { input_type: 'query', outcome: 'success' },
       }),
     ])
   })
 
-  it('makes a single attempt on 429 and reports it as a rate limit', async () => {
+  it('makes and meters one attempt on 429, then reports the rate limit', async () => {
+    const events: UsageEventInput[] = []
     const fetchMock = vi.fn(async () => new Response('{}', { status: 429 }))
     vi.stubGlobal('fetch', fetchMock)
     await expect(
-      embedSearchQuery('What is BERT?', {
-        EMBEDDING_API_KEY: 'pa-test-key-not-real-000000',
-      }),
+      embedSearchQuery(
+        'What is BERT?',
+        { EMBEDDING_API_KEY: 'pa-test-key-not-real-000000' },
+        {
+          actorUserId: 'ama',
+          projectId: null,
+          feature: 'research_chat',
+          recordUsage: async (event) => {
+            events.push(event)
+          },
+        },
+      ),
     ).rejects.toMatchObject({ kind: 'rate_limited' })
     expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(events).toEqual([
+      expect.objectContaining({
+        eventType: 'embedding_request',
+        inputTokens: null,
+        totalTokens: null,
+        quantity: 1,
+        metadata: { input_type: 'query', outcome: 'failure' },
+      }),
+    ])
   })
 
   it('fails without a network call when the key is missing, and never reads VITE_ variables', async () => {
     const fetchMock = vi.fn()
+    const recordUsage = vi.fn()
     vi.stubGlobal('fetch', fetchMock)
     await expect(
-      embedSearchQuery('What is BERT?', {
-        VITE_EMBEDDING_API_KEY: 'pa-should-be-ignored-000000',
-      }),
+      embedSearchQuery(
+        'What is BERT?',
+        { VITE_EMBEDDING_API_KEY: 'pa-should-be-ignored-000000' },
+        {
+          actorUserId: 'ama',
+          projectId: null,
+          feature: 'research_chat',
+          recordUsage,
+        },
+      ),
     ).rejects.toMatchObject({ kind: 'invalid_input' })
     expect(fetchMock).not.toHaveBeenCalled()
+    expect(recordUsage).not.toHaveBeenCalled()
   })
 
   it('never puts the key or query in an error message', async () => {

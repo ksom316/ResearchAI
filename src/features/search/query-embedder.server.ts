@@ -14,7 +14,10 @@ export const QUERY_TIMEOUT_MS = 10_000
 export type QueryEmbeddingUsage = {
   actorUserId: string
   projectId: string | null
-  feature: Extract<UsageFeature, 'research_chat' | 'academic_writer' | 'semantic_search'>
+  feature: Extract<
+    UsageFeature,
+    'research_chat' | 'academic_writer' | 'semantic_search'
+  >
   recordUsage: UsageRecorder
   operationKey?: string
 }
@@ -27,7 +30,8 @@ const isQueryEmbeddingUsage = (
 
 export async function embedSearchQuery(
   query: string,
-  envOrUsage: Record<string, string | undefined> | QueryEmbeddingUsage = process.env,
+  envOrUsage:
+    Record<string, string | undefined> | QueryEmbeddingUsage = process.env,
   usage?: QueryEmbeddingUsage,
 ): Promise<number[]> {
   const env = isQueryEmbeddingUsage(envOrUsage) ? process.env : envOrUsage
@@ -41,21 +45,39 @@ export async function embedSearchQuery(
     maxAttempts: 1,
     timeoutMs: QUERY_TIMEOUT_MS,
   })
-  const result = await provider.embedQuery(query)
-  if (metering) {
-    await metering.recordUsage({
-      actorUserId: metering.actorUserId,
-      projectId: metering.projectId,
-      feature: metering.feature,
-      eventType: 'embedding_request',
-      provider: provider.profile.provider,
-      model: provider.profile.model,
-      inputTokens: result.tokens,
-      totalTokens: result.tokens,
-      quantity: 1,
-      idempotencyKey: `${metering.operationKey ?? crypto.randomUUID()}:query`,
-      metadata: { input_type: 'query' },
-    }).catch(() => undefined)
+  const recordProviderCall = async (
+    tokens: number | null,
+    outcome: 'success' | 'failure',
+  ) => {
+    if (!metering) return
+    await metering
+      .recordUsage({
+        actorUserId: metering.actorUserId,
+        projectId: metering.projectId,
+        feature: metering.feature,
+        eventType: 'embedding_request',
+        provider: provider.profile.provider,
+        model: provider.profile.model,
+        inputTokens: tokens,
+        totalTokens: tokens,
+        quantity: 1,
+        idempotencyKey: `${metering.operationKey ?? crypto.randomUUID()}:query`,
+        metadata: { input_type: 'query', outcome },
+      })
+      .catch(() => undefined)
   }
+
+  let result: Awaited<ReturnType<typeof provider.embedQuery>>
+  try {
+    result = await provider.embedQuery(query)
+  } catch (error) {
+    // Invalid input is rejected locally before fetch; every other error follows an
+    // attempted provider request and is metered once, even when token usage is unknown.
+    if (!(error instanceof EmbeddingError && error.kind === 'invalid_input')) {
+      await recordProviderCall(null, 'failure')
+    }
+    throw error
+  }
+  await recordProviderCall(result.tokens, 'success')
   return result.vector
 }

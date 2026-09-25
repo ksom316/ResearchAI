@@ -68,6 +68,18 @@ export class UsageAllowanceExceededError extends Error {
   }
 }
 
+export type UsageAllowanceFailureKind = 'configuration' | 'request' | 'response'
+
+export class UsageAllowanceCheckError extends Error {
+  readonly kind: UsageAllowanceFailureKind
+
+  constructor(kind: UsageAllowanceFailureKind) {
+    super('AI allowance check is unavailable')
+    this.name = 'UsageAllowanceCheckError'
+    this.kind = kind
+  }
+}
+
 export type LlmUsageEvent = UsageEventInput & {
   eventType: 'llm_request'
   usage?: LlmUsage | null

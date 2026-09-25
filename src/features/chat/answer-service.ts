@@ -123,8 +123,10 @@ export async function runGroundedAnswer(
     if (evidence.items.length === 0) return noEvidence()
 
     let result: StructuredResult
+    let llm: LlmProvider | null = null
     try {
-      result = await deps.getLlm().generateStructured({
+      llm = deps.getLlm()
+      result = await llm.generateStructured({
         system: SYSTEM_PROMPT,
         user: buildUserMessage({
           question,
@@ -147,6 +149,10 @@ export async function runGroundedAnswer(
             elapsedMs: elapsedMs(),
           },
           error,
+          {
+            provider: llm?.providerName,
+            requestedModel: llm?.modelName,
+          },
         ),
       )
       return fail(errorCode, failure.resetDate)

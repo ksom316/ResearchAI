@@ -4,6 +4,7 @@ export type {
   LlmDiagnosticUsage,
   LlmErrorKind,
   LlmFailureCategory,
+  LlmFailureStage,
 } from './errors'
 export {
   createOpenRouterProvider,

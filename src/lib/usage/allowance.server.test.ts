@@ -1,8 +1,10 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
+  createServerUsageAllowanceChecker,
   createSupabaseUsageAllowanceChecker,
   parseUsageAllowanceRow,
 } from './allowance.server'
+import type { UsageAllowanceCheckError } from './types'
 
 const row = {
   period_start: '2026-09-01T00:00:00+00:00',
@@ -19,6 +21,8 @@ const row = {
   allowed: true,
   exhausted_reason: null,
 }
+
+afterEach(() => vi.unstubAllEnvs())
 
 describe('AI usage allowance checker', () => {
   it('parses the database summary without changing measured values', () => {
@@ -47,6 +51,35 @@ describe('AI usage allowance checker', () => {
 
     expect(rpc).toHaveBeenCalledWith('get_ai_allowance_for_actor', {
       p_actor_user_id: 'collaborator-user-id',
+    })
+  })
+
+  it('classifies trusted server configuration failures before any RPC', async () => {
+    vi.stubEnv('SUPABASE_URL', '')
+    vi.stubEnv('VITE_SUPABASE_URL', '')
+    vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', '')
+
+    await expect(
+      createServerUsageAllowanceChecker()('actor-id'),
+    ).rejects.toMatchObject({
+      name: 'UsageAllowanceCheckError',
+      kind: 'configuration',
+    } satisfies Partial<UsageAllowanceCheckError>)
+  })
+
+  it('distinguishes an RPC failure from a malformed allowance response', async () => {
+    const requestFailure = createSupabaseUsageAllowanceChecker({
+      rpc: vi.fn(async () => ({ data: null, error: { message: 'private' } })),
+    } as never)
+    const responseFailure = createSupabaseUsageAllowanceChecker({
+      rpc: vi.fn(async () => ({ data: { malformed: true }, error: null })),
+    } as never)
+
+    await expect(requestFailure('actor-id')).rejects.toMatchObject({
+      kind: 'request',
+    })
+    await expect(responseFailure('actor-id')).rejects.toMatchObject({
+      kind: 'response',
     })
   })
 })

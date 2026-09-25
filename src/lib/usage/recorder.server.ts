@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createSupabaseServiceRoleClient } from '#/lib/supabase/supabase.server'
+import { TrustedSupabaseConfigurationError } from '#/lib/supabase/trusted-config.server'
 import type { UsageEventInput, UsageRecorder } from './types'
 
 type UsageRow = {
@@ -62,12 +63,25 @@ export function createBestEffortServerUsageRecorder(): UsageRecorder {
   let warned = false
   return async (event) => {
     try {
-      recorder ??= createSupabaseUsageRecorder(createSupabaseServiceRoleClient())
+      recorder ??= createSupabaseUsageRecorder(
+        createSupabaseServiceRoleClient(),
+      )
       await recorder(event)
-    } catch {
+    } catch (error) {
       if (!warned) {
         warned = true
-        console.warn('[usage] trusted usage recording is unavailable')
+        console.warn('[usage]', {
+          event: 'usage_recording_failure',
+          failureCategory: 'usage_recording',
+          cause:
+            error instanceof TrustedSupabaseConfigurationError
+              ? 'configuration'
+              : 'write',
+          missingVariables:
+            error instanceof TrustedSupabaseConfigurationError
+              ? error.missingVariables
+              : [],
+        })
       }
     }
   }

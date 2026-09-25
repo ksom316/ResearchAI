@@ -792,6 +792,11 @@ describe('Research Chat completion configuration', () => {
           undefined,
           {
             category: 'truncated',
+            stage: 'provider_response',
+            provider: 'openrouter',
+            requestedModel: 'openrouter/free',
+            requestSent: true,
+            responseContentPresent: true,
             model: 'vendor/free-model',
             finishReason: 'length',
           },
@@ -803,10 +808,14 @@ describe('Research Chat completion configuration', () => {
     expect(h.generate).toHaveBeenCalledTimes(1)
     expect(diagnostics).toEqual([
       expect.objectContaining({
-        stage: 'provider',
+        stage: 'provider_response',
+        failureCategory: 'provider_response',
         errorCode: 'answer_unavailable',
         llmKind: 'invalid_response',
         responseCategory: 'truncated',
+        provider: 'openrouter',
+        requestedModel: 'openrouter/free',
+        requestSent: true,
         finishReason: 'length',
       }),
     ])

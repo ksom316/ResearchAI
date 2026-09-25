@@ -1,5 +1,10 @@
 import { LlmError } from './errors'
-import type { LlmDiagnosticUsage, LlmFailureCategory } from './errors'
+import type {
+  LlmDiagnostic,
+  LlmDiagnosticUsage,
+  LlmFailureCategory,
+  LlmFailureStage,
+} from './errors'
 import type {
   LlmProvider,
   LlmUsage,
@@ -48,6 +53,15 @@ const safeIdentifier = (value: unknown): string | null =>
   typeof value === 'string' && /^[A-Za-z0-9_.:/@-]{1,100}$/.test(value)
     ? value
     : null
+
+const safeProviderCode = (value: unknown): string | null => {
+  if (typeof value === 'number' && Number.isSafeInteger(value)) {
+    return String(value)
+  }
+  return typeof value === 'string' && /^[A-Za-z0-9_.:-]{1,80}$/.test(value)
+    ? value
+    : null
+}
 
 const count = (value: unknown) =>
   typeof value === 'number' && Number.isFinite(value) && value >= 0
@@ -108,7 +122,14 @@ export class OpenRouterProvider implements LlmProvider {
       request.system.trim() === '' ||
       request.user.trim() === ''
     ) {
-      throw new LlmError('configuration', 'Invalid structured request')
+      throw new LlmError(
+        'configuration',
+        'Invalid structured request',
+        undefined,
+        this.failureDiagnostic('request_construction', {
+          requestSent: false,
+        }),
+      )
     }
 
     const controller = new AbortController()
@@ -155,12 +176,24 @@ export class OpenRouterProvider implements LlmProvider {
           throw new LlmError(
             'timeout',
             `OpenRouter request timed out after ${this.timeoutMs} ms`,
+            undefined,
+            this.failureDiagnostic('network'),
           )
         }
         if (controller.signal.aborted) {
-          throw new LlmError('aborted', 'The request was cancelled')
+          throw new LlmError(
+            'aborted',
+            'The request was cancelled',
+            undefined,
+            this.failureDiagnostic('network'),
+          )
         }
-        throw new LlmError('provider_error', 'Could not reach OpenRouter')
+        throw new LlmError(
+          'provider_error',
+          'Could not reach OpenRouter',
+          undefined,
+          this.failureDiagnostic('network'),
+        )
       }
       return this.handle(response.status, body)
     } finally {
@@ -203,11 +236,16 @@ export class OpenRouterProvider implements LlmProvider {
 
   private handle(status: number, body: string): StructuredResult {
     if (status >= 200 && status < 300) return this.parse(body)
+    const responseDiagnostic = this.failureDiagnostic('provider_response', {
+      providerCode: this.providerErrorCode(body),
+      responseContentPresent: body.trim() !== '',
+    })
     if (status === 401 || status === 403) {
       throw new LlmError(
         'auth',
         `OpenRouter rejected the API key (HTTP ${status})`,
         status,
+        responseDiagnostic,
       )
     }
     if (status === 429) {
@@ -215,6 +253,7 @@ export class OpenRouterProvider implements LlmProvider {
         'rate_limited',
         'OpenRouter rate limit reached (HTTP 429)',
         status,
+        responseDiagnostic,
       )
     }
     if (status === 408) {
@@ -222,12 +261,14 @@ export class OpenRouterProvider implements LlmProvider {
         'timeout',
         'OpenRouter reported a request timeout (HTTP 408)',
         status,
+        responseDiagnostic,
       )
     }
     throw new LlmError(
       'provider_error',
       `OpenRouter request failed (HTTP ${status})`,
       status,
+      responseDiagnostic,
     )
   }
 
@@ -235,21 +276,42 @@ export class OpenRouterProvider implements LlmProvider {
     let servedModel: string | null = null
     let finishReason: string | null = null
     const extra: { usage?: LlmDiagnosticUsage } = {}
-    const bad = (message: string, category: LlmFailureCategory) =>
-      new LlmError('invalid_response', message, undefined, {
-        category,
-        model: servedModel,
-        finishReason,
-        ...(extra.usage ? { usage: extra.usage } : {}),
-      })
+    const bad = (
+      message: string,
+      category: LlmFailureCategory,
+      stage: Extract<LlmFailureStage, 'provider_response' | 'structured_parse'>,
+      responseContentPresent: boolean,
+    ) =>
+      new LlmError(
+        'invalid_response',
+        message,
+        undefined,
+        this.failureDiagnostic(stage, {
+          category,
+          model: servedModel,
+          finishReason,
+          responseContentPresent,
+          ...(extra.usage ? { usage: extra.usage } : {}),
+        }),
+      )
     let json: unknown
     try {
       json = JSON.parse(body)
     } catch {
-      throw bad('OpenRouter returned a response that is not valid JSON', 'not_json')
+      throw bad(
+        'OpenRouter returned a response that is not valid JSON',
+        'not_json',
+        'provider_response',
+        body.trim() !== '',
+      )
     }
     if (!isRecord(json)) {
-      throw bad('OpenRouter response is not an object', 'not_object')
+      throw bad(
+        'OpenRouter response is not an object',
+        'not_object',
+        'provider_response',
+        false,
+      )
     }
     servedModel = safeIdentifier(json.model)
     extra.usage = this.diagnosticUsage(json.usage)
@@ -258,28 +320,65 @@ export class OpenRouterProvider implements LlmProvider {
       throw new LlmError(
         'provider_error',
         'OpenRouter reported an upstream error',
+        undefined,
+        this.failureDiagnostic('provider_response', {
+          providerCode: isRecord(json.error)
+            ? safeProviderCode(json.error.code)
+            : null,
+          model: servedModel,
+          responseContentPresent: false,
+          ...(extra.usage ? { usage: extra.usage } : {}),
+        }),
       )
     }
     const choice = Array.isArray(json.choices) ? json.choices[0] : undefined
     if (!isRecord(choice) || !isRecord(choice.message)) {
-      throw bad('OpenRouter response has no message', 'empty')
+      throw bad(
+        'OpenRouter response has no message',
+        'empty',
+        'provider_response',
+        false,
+      )
     }
     finishReason = safeIdentifier(choice.finish_reason)
     if (choice.finish_reason === 'length') {
-      throw bad('The model output was cut off (token limit)', 'truncated')
+      throw bad(
+        'The model output was cut off (token limit)',
+        'truncated',
+        'provider_response',
+        typeof choice.message.content === 'string' &&
+          choice.message.content.trim() !== '',
+      )
     }
     const content = choice.message.content
     if (typeof content !== 'string' || content.trim() === '') {
-      throw bad('OpenRouter response has no message content', 'empty')
+      throw bad(
+        'OpenRouter response has no message content',
+        'empty',
+        'provider_response',
+        false,
+      )
     }
     let data: unknown
     try {
       data = JSON.parse(content)
     } catch {
       // Deliberately no markdown-fence stripping or repair: malformed is malformed.
-      throw bad('The model did not return valid JSON', 'not_json')
+      throw bad(
+        'The model did not return valid JSON',
+        'not_json',
+        'structured_parse',
+        true,
+      )
     }
-    if (!isRecord(data)) throw bad('The model did not return a JSON object', 'not_object')
+    if (!isRecord(data)) {
+      throw bad(
+        'The model did not return a JSON object',
+        'not_object',
+        'structured_parse',
+        true,
+      )
+    }
 
     return {
       data,
@@ -287,6 +386,33 @@ export class OpenRouterProvider implements LlmProvider {
       provider: 'openrouter',
       model: typeof json.model === 'string' ? json.model : this.model,
       finishReason,
+    }
+  }
+
+  private failureDiagnostic(
+    stage: LlmFailureStage,
+    extra: Partial<LlmDiagnostic> = {},
+  ): LlmDiagnostic {
+    return {
+      stage,
+      provider: 'openrouter',
+      requestedModel: this.model,
+      providerCode: null,
+      requestSent:
+        stage !== 'configuration' && stage !== 'request_construction',
+      responseContentPresent: null,
+      ...extra,
+    }
+  }
+
+  private providerErrorCode(body: string): string | null {
+    try {
+      const parsed: unknown = JSON.parse(body)
+      return isRecord(parsed) && isRecord(parsed.error)
+        ? safeProviderCode(parsed.error.code)
+        : null
+    } catch {
+      return null
     }
   }
 

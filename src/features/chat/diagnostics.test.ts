@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { LlmError } from '#/lib/llm'
+import { UsageAllowanceCheckError } from '#/lib/usage/types'
 import {
   logResearchChatDiagnostic,
   researchChatProviderFailureDiagnostic,
@@ -15,6 +16,59 @@ const context = {
 }
 
 describe('Research Chat safe diagnostics', () => {
+  it('identifies a trusted allowance configuration failure before provider fetch', () => {
+    const secret = 'service-role-secret-that-must-not-be-logged'
+    const diagnostic = researchChatProviderFailureDiagnostic(
+      context,
+      new UsageAllowanceCheckError('configuration'),
+      { provider: 'openrouter', requestedModel: 'openrouter/free' },
+    )
+
+    expect(diagnostic).toMatchObject({
+      stage: 'configuration',
+      failureCategory: 'configuration',
+      llmKind: 'allowance',
+      provider: 'openrouter',
+      requestedModel: 'openrouter/free',
+      requestSent: false,
+      httpStatus: null,
+    })
+    expect(JSON.stringify(diagnostic)).not.toContain(secret)
+  })
+
+  it.each([
+    ['auth', 401, 'provider_auth', 'provider'],
+    ['rate_limited', 429, 'provider_rate_limit', 'provider'],
+    ['provider_error', 503, 'provider_unavailable', 'provider'],
+    ['invalid_response', undefined, 'provider_response', 'provider_response'],
+  ] as const)(
+    'classifies %s failures without provider content',
+    (kind, status, failureCategory, stage) => {
+      const diagnostic = researchChatProviderFailureDiagnostic(
+        context,
+        new LlmError(kind, 'fixed safe message', status, {
+          stage: 'provider_response',
+          provider: 'openrouter',
+          requestedModel: 'openrouter/free',
+          providerCode: status ? String(status) : null,
+          requestSent: true,
+          responseContentPresent: true,
+        }),
+      )
+
+      expect(diagnostic).toMatchObject({
+        stage,
+        failureCategory,
+        provider: 'openrouter',
+        requestedModel: 'openrouter/free',
+        httpStatus: status ?? null,
+        providerCode: status ? String(status) : null,
+        requestSent: true,
+        responseContentPresent: true,
+      })
+    },
+  )
+
   it('logs only the fixed content-free diagnostic with the Research Chat prefix', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
     const secret = 'secret prompt, evidence, response, and API key'
@@ -111,22 +165,18 @@ describe('Research Chat safe diagnostics', () => {
       finishReason: 'stop',
       usage: null,
     }
-    const diagnostic = researchChatSchemaFailureDiagnostic(
-      context,
-      result,
-      [
-        {
-          code: 'invalid_type',
-          path: ['segments', 0, 'citations'],
-          expected: 'array',
-        },
-        {
-          code: 'invalid_type',
-          path: ['followUps'],
-          expected: 'array',
-        },
-      ],
-    )
+    const diagnostic = researchChatSchemaFailureDiagnostic(context, result, [
+      {
+        code: 'invalid_type',
+        path: ['segments', 0, 'citations'],
+        expected: 'array',
+      },
+      {
+        code: 'invalid_type',
+        path: ['followUps'],
+        expected: 'array',
+      },
+    ])
 
     expect(diagnostic.schemaValidation).toEqual({
       category: 'schema_validation',

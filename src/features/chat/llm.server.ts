@@ -28,7 +28,17 @@ function readSetting(
   const value = env[name]?.trim()
   if (!value || PLACEHOLDER.test(value)) {
     // Only the variable NAME is mentioned, never a value.
-    throw new LlmError('configuration', `${name} is not configured`)
+    throw new LlmError(
+      'configuration',
+      `${name} is not configured`,
+      undefined,
+      {
+        stage: 'configuration',
+        provider: 'openrouter',
+        requestSent: false,
+        responseContentPresent: null,
+      },
+    )
   }
   return value
 }
@@ -46,6 +56,13 @@ function readStructuredMode(
   throw new LlmError(
     'configuration',
     'LLM_STRUCTURED_MODE must be json_schema or json_object',
+    undefined,
+    {
+      stage: 'configuration',
+      provider: 'openrouter',
+      requestSent: false,
+      responseContentPresent: null,
+    },
   )
 }
 
@@ -56,7 +73,17 @@ export function createServerLlm(
   const apiKey = readSetting(env, 'OPENROUTER_API_KEY')
   const model = readSetting(env, 'LLM_MODEL')
   if (!MODEL_SLUG.test(model)) {
-    throw new LlmError('configuration', 'LLM_MODEL is not a valid model id')
+    throw new LlmError(
+      'configuration',
+      'LLM_MODEL is not a valid model id',
+      undefined,
+      {
+        stage: 'configuration',
+        provider: 'openrouter',
+        requestSent: false,
+        responseContentPresent: null,
+      },
+    )
   }
   return createOpenRouterProvider({
     apiKey,

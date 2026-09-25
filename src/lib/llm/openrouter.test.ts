@@ -128,6 +128,39 @@ describe('OpenRouterProvider errors (never retried)', () => {
     expect(error.message).not.toContain(KEY)
     expect(error.message).not.toContain('CONFIDENTIAL')
     expect(error.message).not.toContain('upstream said')
+    expect(error.diagnostic).toMatchObject({
+      stage: 'provider_response',
+      provider: 'openrouter',
+      requestedModel: MODEL,
+      requestSent: true,
+      responseContentPresent: true,
+    })
+  })
+
+  it('captures only the safe OpenRouter code for a 401 response', async () => {
+    const error = await failure(
+      provider(async () =>
+        Promise.resolve(
+          new Response(
+            JSON.stringify({
+              error: { code: 401, message: `${KEY} ${SECRET_PROMPT}` },
+            }),
+            { status: 401 },
+          ),
+        ),
+      ),
+    )
+
+    expect(error).toMatchObject({ kind: 'auth', status: 401 })
+    expect(error.diagnostic).toMatchObject({
+      providerCode: '401',
+      requestSent: true,
+      responseContentPresent: true,
+    })
+    expect(JSON.stringify([error.message, error.diagnostic])).not.toContain(KEY)
+    expect(JSON.stringify([error.message, error.diagnostic])).not.toContain(
+      SECRET_PROMPT,
+    )
   })
 
   it.each([
@@ -174,6 +207,11 @@ describe('OpenRouterProvider errors (never retried)', () => {
     expect(error.kind).toBe('provider_error')
     expect(error.message).not.toContain(KEY)
     expect(error.message).not.toContain('CONFIDENTIAL')
+    expect(error.diagnostic).toMatchObject({
+      stage: 'network',
+      requestSent: true,
+      responseContentPresent: null,
+    })
   })
 
   it('times out via the abort signal', async () => {
@@ -307,13 +345,21 @@ describe('OpenRouterProvider safe diagnostics', () => {
       JSON.stringify({
         model: 'vendor/served-model:free',
         choices: [
-          { finish_reason: 'length', message: { role: 'assistant', content: RAW } },
+          {
+            finish_reason: 'length',
+            message: { role: 'assistant', content: RAW },
+          },
         ],
       }),
       { status: 200 },
     )
-    expect(await diag(res)).toEqual({
+    expect(await diag(res)).toMatchObject({
       category: 'truncated',
+      stage: 'provider_response',
+      provider: 'openrouter',
+      requestedModel: MODEL,
+      requestSent: true,
+      responseContentPresent: true,
       model: 'vendor/served-model:free',
       finishReason: 'length',
     })
@@ -322,7 +368,11 @@ describe('OpenRouterProvider safe diagnostics', () => {
   it('reports not_json for content that is not JSON (no fence stripping)', async () => {
     expect(
       await diag(completion('```json\n{"a":"' + RAW + '"}\n```')),
-    ).toMatchObject({ category: 'not_json', model: MODEL, finishReason: 'stop' })
+    ).toMatchObject({
+      category: 'not_json',
+      model: MODEL,
+      finishReason: 'stop',
+    })
   })
 
   it('reports not_object for JSON that is not an object', async () => {
@@ -349,8 +399,10 @@ describe('OpenRouterProvider safe diagnostics', () => {
       }),
       { status: 200 },
     )
-    expect(await diag(res)).toEqual({
+    expect(await diag(res)).toMatchObject({
       category: 'not_json',
+      stage: 'structured_parse',
+      responseContentPresent: true,
       model: null,
       finishReason: null,
     })
@@ -368,7 +420,10 @@ describe('OpenRouterProvider safe diagnostics', () => {
 describe('OpenRouterProvider truncation usage diagnostics', () => {
   const RAW = 'RAW-MODEL-CONTENT-DO-NOT-LOG'
   const REASONING = 'PRIVATE-REASONING-TEXT-DO-NOT-LOG'
-  const truncated = (usage: unknown, extraMessage: Record<string, unknown> = {}) =>
+  const truncated = (
+    usage: unknown,
+    extraMessage: Record<string, unknown> = {},
+  ) =>
     new Response(
       JSON.stringify({
         model: 'vendor/served:free',
@@ -394,8 +449,14 @@ describe('OpenRouterProvider truncation usage diagnostics', () => {
 
   it('captures prompt, completion and total tokens on truncation', async () => {
     expect(
-      await diag(truncated({ prompt_tokens: 7000, completion_tokens: 3000, total_tokens: 10000 })),
-    ).toEqual({
+      await diag(
+        truncated({
+          prompt_tokens: 7000,
+          completion_tokens: 3000,
+          total_tokens: 10000,
+        }),
+      ),
+    ).toMatchObject({
       category: 'truncated',
       model: 'vendor/served:free',
       finishReason: 'length',
@@ -420,25 +481,44 @@ describe('OpenRouterProvider truncation usage diagnostics', () => {
     })
     for (const bad of ['2400', null, -5, Number.NaN, { n: 1 }]) {
       const d = await diag(
-        truncated({ completion_tokens: 3000, completion_tokens_details: { reasoning_tokens: bad } }),
+        truncated({
+          completion_tokens: 3000,
+          completion_tokens_details: { reasoning_tokens: bad },
+        }),
       )
       expect(d?.usage, String(bad)).toEqual({ completionTokens: 3000 })
     }
     // nothing is inferred when the details object is absent
-    expect((await diag(truncated({ completion_tokens: 3000 })))?.usage).toEqual({ completionTokens: 3000 })
+    expect((await diag(truncated({ completion_tokens: 3000 })))?.usage).toEqual(
+      { completionTokens: 3000 },
+    )
   })
 
   it('never reads reasoning content or message text', async () => {
     const d = await diag(
-      truncated({ completion_tokens: 1 }, { reasoning: REASONING, reasoning_content: REASONING }),
+      truncated(
+        { completion_tokens: 1 },
+        { reasoning: REASONING, reasoning_content: REASONING },
+      ),
     )
     expect(d?.usage).toEqual({ completionTokens: 1 })
   })
 
   it('omits usage entirely when the provider supplies none or garbage', async () => {
-    for (const usage of [undefined, null, 'x', [], {}, { prompt_tokens: 'a' }]) {
+    for (const usage of [
+      undefined,
+      null,
+      'x',
+      [],
+      {},
+      { prompt_tokens: 'a' },
+    ]) {
       const d = await diag(truncated(usage))
-      expect(d).toEqual({ category: 'truncated', model: 'vendor/served:free', finishReason: 'length' })
+      expect(d).toMatchObject({
+        category: 'truncated',
+        model: 'vendor/served:free',
+        finishReason: 'length',
+      })
       expect(d).not.toHaveProperty('usage')
     }
   })
@@ -453,6 +533,27 @@ describe('OpenRouterProvider truncation usage diagnostics', () => {
   })
 })
 
+describe('OpenRouterProvider free router success', () => {
+  it('uses openrouter/free in exactly one successful request', async () => {
+    const fetchFn = vi.fn<typeof fetch>(async () => completion('{"a":"ok"}'))
+    const freeProvider = new OpenRouterProvider({
+      apiKey: KEY,
+      model: 'openrouter/free',
+      fetch: fetchFn,
+    })
+
+    const result = await freeProvider.generateStructured(request)
+
+    expect(result.data).toEqual({ a: 'ok' })
+    expect(fetchFn).toHaveBeenCalledTimes(1)
+    const init = fetchFn.mock.calls[0][1]
+    if (!init) expect.unreachable()
+    expect(JSON.parse(String(init.body))).toMatchObject({
+      model: 'openrouter/free',
+    })
+  })
+})
+
 describe('OpenRouterProvider reasoning control (per call, optional)', () => {
   const bodyOf = async (
     req: typeof request & { reasoning?: ReasoningConfig },
@@ -461,7 +562,10 @@ describe('OpenRouterProvider reasoning control (per call, optional)', () => {
       completion('{"a":"ok"}'),
     )
     const result = await provider(fetchFn).generateStructured(req)
-    const body = JSON.parse(String(fetchFn.mock.calls[0][1].body)) as Record<string, unknown>
+    const body = JSON.parse(String(fetchFn.mock.calls[0][1].body)) as Record<
+      string,
+      unknown
+    >
     return { body, result }
   }
 
@@ -490,22 +594,31 @@ describe('OpenRouterProvider reasoning control (per call, optional)', () => {
 
   it('keeps require_parameters, json_schema and every other field when reasoning is set', async () => {
     const plain = (await bodyOf(request)).body
-    const withReasoning = (await bodyOf({ ...request, reasoning: { effort: 'low' } })).body
+    const withReasoning = (
+      await bodyOf({ ...request, reasoning: { effort: 'low' } })
+    ).body
     const { reasoning: _reasoning, ...rest } = withReasoning
     expect(rest).toEqual(plain)
     expect(withReasoning.provider).toEqual({ require_parameters: true })
-    expect((withReasoning.response_format as { type: string }).type).toBe('json_schema')
+    expect((withReasoning.response_format as { type: string }).type).toBe(
+      'json_schema',
+    )
   })
 
   it('does not change the structured result', async () => {
     const plain = (await bodyOf(request)).result
-    const withReasoning = (await bodyOf({ ...request, reasoning: { effort: 'low' } })).result
+    const withReasoning = (
+      await bodyOf({ ...request, reasoning: { effort: 'low' } })
+    ).result
     expect(withReasoning).toEqual(plain)
   })
 
   it('an unsupported-parameter HTTP error keeps the existing classification and sends no fallback request', async () => {
-    const fetchFn = vi.fn(async (_url: string, _init: RequestInit) =>
-      new Response('{"error":{"message":"no endpoints found"}}', { status: 404 }),
+    const fetchFn = vi.fn(
+      async (_url: string, _init: RequestInit) =>
+        new Response('{"error":{"message":"no endpoints found"}}', {
+          status: 404,
+        }),
     )
     const error = (await provider(fetchFn)
       .generateStructured({ ...request, reasoning: { effort: 'low' } })

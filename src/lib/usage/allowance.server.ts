@@ -1,6 +1,8 @@
 import { z } from 'zod'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createSupabaseServiceRoleClient } from '#/lib/supabase/supabase.server'
+import { TrustedSupabaseConfigurationError } from '#/lib/supabase/trusted-config.server'
+import { UsageAllowanceCheckError } from './types'
 import type { UsageAllowanceChecker, UsageAllowanceStatus } from './types'
 
 const count = z.coerce.number().int().min(0)
@@ -48,17 +50,29 @@ export function createSupabaseUsageAllowanceChecker(
     const { data, error } = await client.rpc('get_ai_allowance_for_actor', {
       p_actor_user_id: actorUserId,
     })
-    if (error) throw new Error('AI allowance check is unavailable')
-    return parseUsageAllowanceRow(data)
+    if (error) throw new UsageAllowanceCheckError('request')
+    try {
+      return parseUsageAllowanceRow(data)
+    } catch {
+      throw new UsageAllowanceCheckError('response')
+    }
   }
 }
 
 export function createServerUsageAllowanceChecker(): UsageAllowanceChecker {
   let checker: UsageAllowanceChecker | null = null
-  return (actorUserId) => {
-    checker ??= createSupabaseUsageAllowanceChecker(
-      createSupabaseServiceRoleClient(),
-    )
-    return checker(actorUserId)
+  return async (actorUserId) => {
+    try {
+      checker ??= createSupabaseUsageAllowanceChecker(
+        createSupabaseServiceRoleClient(),
+      )
+      return await checker(actorUserId)
+    } catch (error) {
+      if (error instanceof UsageAllowanceCheckError) throw error
+      if (error instanceof TrustedSupabaseConfigurationError) {
+        throw new UsageAllowanceCheckError('configuration')
+      }
+      throw new UsageAllowanceCheckError('request')
+    }
   }
 }

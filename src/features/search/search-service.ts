@@ -4,6 +4,7 @@ import {
   INPUT_PROFILE_CTX_V1,
   VOYAGE_PHASE4_PROFILE,
 } from '#/lib/embedding'
+import type { EmbeddingErrorKind } from '#/lib/embedding'
 import { searchRequestSchema } from './schemas'
 import type {
   PaperCoverage,
@@ -14,11 +15,31 @@ import type {
   SearchRequest,
 } from './types'
 
-const coverageRequestSchema = z.object({ projectId: z.string().uuid() }).strict()
+const coverageRequestSchema = z
+  .object({ projectId: z.string().uuid() })
+  .strict()
 
 export type RpcResult = {
   data: unknown
-  error: { message: string } | null
+  error: { code?: string; message: string } | null
+}
+
+export type SemanticSearchDiagnostic = {
+  event: 'semantic_search_failure'
+  stage:
+    | 'request_validation'
+    | 'authentication'
+    | 'coverage_rpc'
+    | 'coverage_response'
+    | 'profile_rpc'
+    | 'profile_response'
+    | 'embedding'
+    | 'search_rpc'
+    | 'search_response'
+    | 'unexpected'
+  errorCode: SearchErrorCode
+  databaseCode: string | null
+  embeddingKind: EmbeddingErrorKind | null
 }
 
 /** What the service needs from Supabase, as the authenticated caller. */
@@ -48,6 +69,8 @@ export type SearchDeps = {
   db: SearchDb
   /** Embeds the (already normalized) query text as a QUERY. Throws EmbeddingError. */
   embedQuery: (query: string) => Promise<number[]>
+  /** Server-owned, content-free failure telemetry. */
+  diagnostic?: (diagnostic: SemanticSearchDiagnostic) => void
 }
 
 const coverageRow = z.object({
@@ -121,6 +144,24 @@ function rpcError(error: { message: string }): SearchErrorCode {
 
 const fail = (error: SearchErrorCode): SearchOutcome => ({ ok: false, error })
 
+const safeDatabaseCode = (error: RpcResult['error']): string | null =>
+  error?.code && /^[A-Za-z0-9_]{2,20}$/.test(error.code) ? error.code : null
+
+const diagnostic = (
+  stage: SemanticSearchDiagnostic['stage'],
+  errorCode: SearchErrorCode,
+  options: {
+    databaseError?: RpcResult['error']
+    embeddingKind?: EmbeddingErrorKind
+  } = {},
+): SemanticSearchDiagnostic => ({
+  event: 'semantic_search_failure',
+  stage,
+  errorCode,
+  databaseCode: safeDatabaseCode(options.databaseError ?? null),
+  embeddingKind: options.embeddingKind ?? null,
+})
+
 /** Coverage-only path: authenticated RPC inspection with no embedding/provider call. */
 export async function runSearchCoverage(
   raw: unknown,
@@ -163,25 +204,50 @@ export async function runSemanticSearch(
   deps: SearchDeps,
 ): Promise<SearchOutcome> {
   const parsed = searchRequestSchema.safeParse(raw)
-  if (!parsed.success) return fail('invalid_request')
+  const emit = (value: SemanticSearchDiagnostic) => deps.diagnostic?.(value)
+  if (!parsed.success) {
+    emit(diagnostic('request_validation', 'invalid_request'))
+    return fail('invalid_request')
+  }
   const request: SearchRequest = parsed.data
   const { db } = deps
 
   try {
-    if (!(await db.getUserId())) return fail('unauthenticated')
+    if (!(await db.getUserId())) {
+      emit(diagnostic('authentication', 'unauthenticated'))
+      return fail('unauthenticated')
+    }
 
     const scope = scopeArgs(request)
     const coverageResult = await db.coverage(scope)
-    if (coverageResult.error) return fail(rpcError(coverageResult.error))
+    if (coverageResult.error) {
+      const errorCode = rpcError(coverageResult.error)
+      emit(
+        diagnostic('coverage_rpc', errorCode, {
+          databaseError: coverageResult.error,
+        }),
+      )
+      return fail(errorCode)
+    }
     const coverage = parseSearchCoverage(coverageResult.data)
-    if (!coverage) return fail('search_unavailable')
+    if (!coverage) {
+      emit(diagnostic('coverage_response', 'search_unavailable'))
+      return fail('search_unavailable')
+    }
 
     if (!coverage.some((paper) => paper.state === 'searchable')) {
       return { ok: true, status: 'nothing_searchable', results: [], coverage }
     }
 
     const profileResult = await db.activeProfile()
-    if (profileResult.error) return fail('search_unavailable')
+    if (profileResult.error) {
+      emit(
+        diagnostic('profile_rpc', 'search_unavailable', {
+          databaseError: profileResult.error,
+        }),
+      )
+      return fail('search_unavailable')
+    }
     const profile = profileRow.safeParse(profileResult.data)
     if (
       !profile.success ||
@@ -190,6 +256,7 @@ export async function runSemanticSearch(
       profile.data.dimensions !== VOYAGE_PHASE4_PROFILE.dimensions ||
       profile.data.input_profile !== INPUT_PROFILE_CTX_V1
     ) {
+      emit(diagnostic('profile_response', 'search_unavailable'))
       return fail('search_unavailable')
     }
 
@@ -198,11 +265,17 @@ export async function runSemanticSearch(
     try {
       queryEmbedding = await deps.embedQuery(request.query)
     } catch (error) {
-      return fail(
-        error instanceof EmbeddingError && error.kind === 'rate_limited'
+      const embeddingError = error instanceof EmbeddingError ? error : null
+      const errorCode =
+        embeddingError?.kind === 'rate_limited'
           ? 'search_busy'
-          : 'search_unavailable',
+          : 'search_unavailable'
+      emit(
+        diagnostic('embedding', errorCode, {
+          embeddingKind: embeddingError?.kind,
+        }),
       )
+      return fail(errorCode)
     }
 
     const searchResult = await db.search({
@@ -213,9 +286,20 @@ export async function runSemanticSearch(
       minSimilarity: request.minSimilarity,
       includeReferences: request.includeReferences,
     })
-    if (searchResult.error) return fail(rpcError(searchResult.error))
+    if (searchResult.error) {
+      const errorCode = rpcError(searchResult.error)
+      emit(
+        diagnostic('search_rpc', errorCode, {
+          databaseError: searchResult.error,
+        }),
+      )
+      return fail(errorCode)
+    }
     const hitRows = z.array(hitRow).safeParse(searchResult.data)
-    if (!hitRows.success) return fail('search_unavailable')
+    if (!hitRows.success) {
+      emit(diagnostic('search_response', 'search_unavailable'))
+      return fail('search_unavailable')
+    }
 
     const results: SearchHit[] = hitRows.data.map((row) => ({
       rank: row.rank,
@@ -237,6 +321,7 @@ export async function runSemanticSearch(
     return { ok: true, status: 'results', results, coverage }
   } catch {
     // Never surface raw errors: they could carry query text or secrets.
+    emit(diagnostic('unexpected', 'search_unavailable'))
     return fail('search_unavailable')
   }
 }

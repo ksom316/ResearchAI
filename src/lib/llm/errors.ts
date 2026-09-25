@@ -14,10 +14,14 @@ export type LlmErrorKind =
 
 /** Why a response was unusable. A fixed set: never derived from model output. */
 export type LlmFailureCategory =
-  | 'truncated'
-  | 'not_json'
-  | 'not_object'
-  | 'empty'
+  'truncated' | 'not_json' | 'not_object' | 'empty'
+
+export type LlmFailureStage =
+  | 'configuration'
+  | 'request_construction'
+  | 'network'
+  | 'provider_response'
+  | 'structured_parse'
 
 /** Numeric token counts the provider reported; a field is omitted when not supplied. */
 export type LlmDiagnosticUsage = {
@@ -30,10 +34,16 @@ export type LlmDiagnosticUsage = {
 
 /** Safe metadata about an unusable response: no content, only bounded identifiers/numbers. */
 export type LlmDiagnostic = {
-  category: LlmFailureCategory
+  category?: LlmFailureCategory
+  stage?: LlmFailureStage
+  provider?: string | null
+  requestedModel?: string | null
+  providerCode?: string | null
+  requestSent?: boolean
+  responseContentPresent?: boolean | null
   /** The model that answered, if the provider said so. */
-  model: string | null
-  finishReason: string | null
+  model?: string | null
+  finishReason?: string | null
   usage?: LlmDiagnosticUsage
 }
 

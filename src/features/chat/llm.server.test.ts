@@ -57,6 +57,12 @@ describe('createServerLlm (env adapter)', () => {
       expect(error).toBeInstanceOf(LlmError)
       expect((error as LlmError).kind).toBe('configuration')
       expect((error as LlmError).message).not.toContain(KEY)
+      expect((error as LlmError).diagnostic).toMatchObject({
+        stage: 'configuration',
+        provider: 'openrouter',
+        requestSent: false,
+        responseContentPresent: null,
+      })
     }
     expect(fetchFn).not.toHaveBeenCalled()
   })

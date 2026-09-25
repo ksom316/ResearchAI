@@ -5,8 +5,9 @@ import { createSupabaseServerClient } from '#/lib/supabase/supabase.server'
 import { createBestEffortServerUsageRecorder } from '#/lib/usage/recorder.server'
 import { createServerUsageAllowanceChecker } from '#/lib/usage/allowance.server'
 import { createMeteredLlm } from '#/lib/usage/metered-llm'
-import { requireProjectEditor } from '#/lib/projects/authorization.server'
+import { requireProjectViewer } from '#/lib/projects/authorization.server'
 import { runGroundedAnswer } from './answer-service'
+import { logSemanticSearchDiagnostic } from '#/features/search/diagnostics.server'
 import { createServerLlm } from './llm.server'
 import { logResearchChatDiagnostic } from './diagnostics'
 import { askRequestSchema } from './schemas'
@@ -28,7 +29,7 @@ export const askResearchFn = createServerFn({ method: 'POST' })
       parsed.success && parsed.data.scope.type === 'project'
         ? parsed.data.scope.projectId
         : null
-    if (projectId) await requireProjectEditor(supabase, projectId)
+    if (projectId) await requireProjectViewer(supabase, projectId)
     const recordUsage = createBestEffortServerUsageRecorder()
     const checkAllowance = createServerUsageAllowanceChecker()
     return runGroundedAnswer(data, {
@@ -43,6 +44,7 @@ export const askResearchFn = createServerFn({ method: 'POST' })
                 recordUsage,
               })
             : embedSearchQuery(query),
+        diagnostic: logSemanticSearchDiagnostic,
       },
       getLlm: () =>
         createMeteredLlm(createServerLlm(), {
