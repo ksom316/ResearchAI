@@ -1,5 +1,6 @@
 import type { Paper } from '#/features/papers/types'
 import { formatNumericDraftCopy } from '#/features/citations/format'
+import { allowanceReachedMessage } from '#/lib/usage/presentation'
 import { writerRequestSchema } from './schemas'
 import type {
   GroundedDraft,
@@ -21,12 +22,14 @@ export const WRITER_MODE_OPTIONS: readonly WriterModeOption[] = [
   {
     value: 'literature_synthesis',
     label: 'Literature synthesis',
-    description: 'Synthesize a focused topic across at least two relevant papers.',
+    description:
+      'Synthesize a focused topic across at least two relevant papers.',
   },
   {
     value: 'compare_studies',
     label: 'Compare studies',
-    description: 'Compare objectives, methods, datasets, and findings across 2–5 papers.',
+    description:
+      'Compare objectives, methods, datasets, and findings across 2–5 papers.',
   },
   {
     value: 'methodology_summary',
@@ -106,7 +109,9 @@ export function groupUnitCitationsByPaper(
   citationIds: readonly WriterEvidenceId[],
 ): UnitPaperCitationGroup[] {
   const numbers = citationNumberMap(draft)
-  const citations = new Map(draft.citations.map((citation) => [citation.id, citation]))
+  const citations = new Map(
+    draft.citations.map((citation) => [citation.id, citation]),
+  )
   const groups = new Map<number, UnitPaperCitationGroup>()
   for (const id of citationIds) {
     const citation = citations.get(id)
@@ -126,26 +131,38 @@ export function groupUnitCitationsByPaper(
   return [...groups.values()]
 }
 
-export const WRITER_ERROR_MESSAGES: Record<WriterGenerationErrorCode, string> = {
-  invalid_request: 'Check the writing mode configuration and try again.',
-  unauthenticated: 'Your session has expired. Sign in again to use Academic Writer.',
-  scope_not_found: 'This project or paper selection is no longer available.',
-  retrieval_busy: 'Research retrieval is busy. Try again in a moment.',
-  retrieval_unavailable: 'The project evidence could not be loaded right now.',
-  writer_busy: 'Academic Writer is busy. Try again in a moment.',
-  writer_timeout: 'Draft generation timed out. No partial draft was displayed.',
-  writer_unavailable: 'Academic Writer is temporarily unavailable.',
-  writer_truncated: 'The draft was truncated and could not be safely displayed.',
-  invalid_output:
-    'The generated draft could not be safely verified. Nothing was displayed.',
-  invalid_citation:
-    'The generated draft could not be safely verified against its sources. Nothing was displayed.',
-  invalid_content:
-    'The generated draft did not meet the grounded-content requirements. Nothing was displayed.',
-}
+export const WRITER_ERROR_MESSAGES: Record<WriterGenerationErrorCode, string> =
+  {
+    invalid_request: 'Check the writing mode configuration and try again.',
+    unauthenticated:
+      'Your session has expired. Sign in again to use Academic Writer.',
+    scope_not_found: 'This project or paper selection is no longer available.',
+    retrieval_busy: 'Research retrieval is busy. Try again in a moment.',
+    retrieval_unavailable:
+      'The project evidence could not be loaded right now.',
+    writer_busy: 'Academic Writer is busy. Try again in a moment.',
+    writer_timeout:
+      'Draft generation timed out. No partial draft was displayed.',
+    usage_exhausted:
+      "You've reached your AI usage allowance for this month. Your allowance resets at the start of next month.",
+    writer_unavailable: 'Academic Writer is temporarily unavailable.',
+    writer_truncated:
+      'The draft was truncated and could not be safely displayed.',
+    invalid_output:
+      'The generated draft could not be safely verified. Nothing was displayed.',
+    invalid_citation:
+      'The generated draft could not be safely verified against its sources. Nothing was displayed.',
+    invalid_content:
+      'The generated draft did not meet the grounded-content requirements. Nothing was displayed.',
+  }
 
-export function writerResultMessage(result: WriterGenerationResult): string | null {
-  if (!result.ok) return WRITER_ERROR_MESSAGES[result.error]
+export function writerResultMessage(
+  result: WriterGenerationResult,
+): string | null {
+  if (!result.ok)
+    return result.error === 'usage_exhausted'
+      ? allowanceReachedMessage(result.resetDate)
+      : WRITER_ERROR_MESSAGES[result.error]
   if (result.status === 'generated') return null
   if (result.status === 'no_evidence')
     return 'No usable source-backed evidence is available for this writing mode.'

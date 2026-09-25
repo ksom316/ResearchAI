@@ -159,6 +159,21 @@ Production worker processes use `npm run worker` and `npm run worker:evidence`, 
 - Provider errors and diagnostics omit prompts, paper text, raw responses, credentials, and user/project identifiers.
 - Citation metadata is formatted deterministically; the LLM cannot invent bibliographic identity.
 
+## AI usage allowances
+
+Monthly AI allowances are configured in `ai_allowance_profiles`; users inherit the
+`default` profile unless a future administrative workflow assigns another profile.
+Enforcement uses the authenticated actor's append-only `usage_events`, never project
+ownership or browser state. Successful provider responses consume one request. Failed
+provider calls do not consume a request, while any real token counts reported for a
+failed call are retained and count toward the token allowance. Missing token metadata
+stays unknown and is never estimated.
+
+The allowance is checked immediately before each LLM provider call. Since final output
+tokens are unknowable before generation, a call that starts below the token limit can
+finish slightly above it; the recorded actual usage then blocks subsequent calls until
+the next UTC monthly boundary. No scheduled reset job is required.
+
 ## Known limitations
 
 - Research Chat is single-turn and stateless.

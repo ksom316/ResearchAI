@@ -1,4 +1,5 @@
 import { claimCheckRequestSchema } from './schemas'
+import { allowanceReachedMessage } from '#/lib/usage/presentation'
 import type {
   ClaimCheckAbstentionReason,
   ClaimCheckAssessmentError,
@@ -35,9 +36,13 @@ const ERROR_MESSAGES: Record<ClaimCheckAssessmentError, string> = {
   evidence_unavailable: 'The cited evidence could not be loaded right now.',
   checker_busy: 'Claim Checker is busy. Try again in a moment.',
   checker_timeout: 'The support assessment timed out. No result was displayed.',
+  usage_exhausted:
+    "You've reached your AI usage allowance for this month. Your allowance resets at the start of next month.",
   checker_unavailable: 'Claim Checker is temporarily unavailable.',
-  checker_truncated: 'The support assessment was truncated and could not be safely displayed.',
-  invalid_output: 'The support assessment could not be safely verified. No result was displayed.',
+  checker_truncated:
+    'The support assessment was truncated and could not be safely displayed.',
+  invalid_output:
+    'The support assessment could not be safely verified. No result was displayed.',
   invalid_assessment:
     'The support assessment did not pass source validation. No result was displayed.',
 }
@@ -60,8 +65,13 @@ export function buildClaimCheckRequest(
   return parsed.success ? (parsed.data as NormalizedClaimCheckRequest) : null
 }
 
-export function claimCheckResultMessage(result: ClaimCheckResult): string | null {
-  if (!result.ok) return ERROR_MESSAGES[result.error]
+export function claimCheckResultMessage(
+  result: ClaimCheckResult,
+): string | null {
+  if (!result.ok)
+    return result.error === 'usage_exhausted'
+      ? allowanceReachedMessage(result.resetDate)
+      : ERROR_MESSAGES[result.error]
   if (result.status === 'assessed') return null
   return ABSTENTION_MESSAGES[result.reason]
 }

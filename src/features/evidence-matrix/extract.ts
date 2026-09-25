@@ -1,5 +1,6 @@
 import { LlmError } from '#/lib/llm'
 import type { LlmProvider, ReasoningConfig } from '#/lib/llm'
+import { UsageAllowanceExceededError } from '#/lib/usage/types'
 import { buildEvidencePacket } from './evidence-packet'
 import type { EvidencePacket, PaperInput } from './evidence-packet'
 import { FIELD_KEYS } from './fields'
@@ -42,6 +43,7 @@ export type NormalizedField = {
 
 export type ExtractionErrorCode =
   | 'llm_unavailable'
+  | 'usage_exhausted'
   /** The provider reported finish_reason=length: the answer was cut off (retryable). */
   | 'truncated'
   | 'invalid_output'
@@ -97,7 +99,9 @@ export function safeDiagnostic(parts: {
   if (parts.detail) bits.push(parts.detail)
   const meta = [
     parts.model ? `model=${identifier(parts.model)}` : null,
-    parts.finishReason ? `finish_reason=${identifier(parts.finishReason)}` : null,
+    parts.finishReason
+      ? `finish_reason=${identifier(parts.finishReason)}`
+      : null,
     numeric('prompt_tokens', parts.usage?.promptTokens),
     numeric('completion_tokens', parts.usage?.completionTokens),
     numeric('total_tokens', parts.usage?.totalTokens),
@@ -258,12 +262,18 @@ export async function extractEvidenceMatrix(
       signal: deps.signal,
     })
   } catch (error) {
+    if (error instanceof UsageAllowanceExceededError) {
+      return { ok: false, error: 'usage_exhausted' }
+    }
     if (error instanceof LlmError && error.kind === 'invalid_response') {
       return {
         ok: false,
         // ONLY a response the provider itself marked as cut off is retryable. Anything
         // else that was unusable (not JSON, not an object, empty) stays terminal.
-        error: error.diagnostic?.category === 'truncated' ? 'truncated' : 'invalid_output',
+        error:
+          error.diagnostic?.category === 'truncated'
+            ? 'truncated'
+            : 'invalid_output',
         diagnostic: safeDiagnostic({
           category: error.diagnostic?.category ?? 'invalid_response',
           model: error.diagnostic?.model,
@@ -276,7 +286,9 @@ export async function extractEvidenceMatrix(
       ok: false,
       error: 'llm_unavailable',
       diagnostic:
-        error instanceof LlmError ? safeDiagnostic({ category: `llm_${error.kind}` }) : undefined,
+        error instanceof LlmError
+          ? safeDiagnostic({ category: `llm_${error.kind}` })
+          : undefined,
     }
   }
 

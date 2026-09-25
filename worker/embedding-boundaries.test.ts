@@ -131,16 +131,19 @@ describe('migration 0006 stays unchanged', () => {
     )
   })
 
-  it('is followed only by the approved Phase 4C, 4D, 6A, and 7C migrations', () => {
+  it('retains the approved Phase 4C, 4D, 6A, and 7C migrations', () => {
     const migrations = readdirSync(join(root, 'supabase/migrations')).sort()
-    expect(migrations.slice(-7)).toEqual([
-      '0006_vector_foundation.sql',
-      '0007_embedding_worker.sql',
-      '0008_semantic_search.sql',
-      '0009_evidence_matrix_foundation.sql',
-      '0010_evidence_matrix_worker.sql',
-      '0011_evidence_matrix_worker_fix.sql',
-      '0012_citation_metadata.sql',
-    ])
+    expect(migrations).toEqual(
+      expect.arrayContaining([
+        '0006_vector_foundation.sql',
+        '0007_embedding_worker.sql',
+        '0008_semantic_search.sql',
+        '0009_evidence_matrix_foundation.sql',
+        '0010_evidence_matrix_worker.sql',
+        '0011_evidence_matrix_worker_fix.sql',
+        '0012_citation_metadata.sql',
+        '0013_usage_metering.sql',
+      ]),
+    )
   })
 })

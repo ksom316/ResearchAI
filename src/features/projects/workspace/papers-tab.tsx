@@ -6,30 +6,29 @@ import { AddFromLibraryDialog } from '#/features/papers/components/add-from-libr
 import { PaperList } from '#/features/papers/components/paper-list'
 import { UploadDropzone } from '#/features/papers/components/upload-dropzone'
 
-export function PapersTab({ projectId }: { projectId: string }) {
+export function PapersTab({ projectId, canEdit }: { projectId: string; canEdit: boolean }) {
   const [addOpen, setAddOpen] = useState(false)
 
   return (
     <div className="space-y-4">
-      <UploadDropzone projectId={projectId} />
-      <div className="flex justify-end">
-        <Button variant="outline" onClick={() => setAddOpen(true)}>
-          <Library /> Add from Library
-        </Button>
-      </div>
+      {canEdit && <UploadDropzone projectId={projectId} />}
+      {canEdit && <div className="flex justify-end">
+        <Button variant="outline" onClick={() => setAddOpen(true)}><Library /> Add from Library</Button>
+      </div>}
       <Card>
         <CardContent>
           <PaperList
             projectId={projectId}
+            canEdit={canEdit}
             emptyDescription="No papers are linked to this project yet. Upload a PDF or add one from your Library."
           />
         </CardContent>
       </Card>
-      <AddFromLibraryDialog
+      {canEdit && <AddFromLibraryDialog
         projectId={projectId}
         open={addOpen}
         onOpenChange={setAddOpen}
-      />
+      />}
     </div>
   )
 }

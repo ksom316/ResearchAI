@@ -60,6 +60,8 @@ const count = (value: unknown) =>
  * support it). One request, no retries, no fallback models. The output is untrusted.
  */
 export class OpenRouterProvider implements LlmProvider {
+  readonly providerName = 'openrouter'
+  readonly modelName: string
   private readonly apiKey: string
   private readonly model: string
   private readonly temperature: number
@@ -90,6 +92,7 @@ export class OpenRouterProvider implements LlmProvider {
     this.structuredMode = structuredMode
     this.apiKey = options.apiKey.trim()
     this.model = options.model.trim()
+    this.modelName = this.model
     this.temperature = temperature
     this.timeoutMs = timeoutMs
     this.url = `${(options.baseUrl ?? OPENROUTER_BASE_URL).replace(/\/+$/, '')}/chat/completions`

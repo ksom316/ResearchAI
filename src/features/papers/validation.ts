@@ -1,4 +1,6 @@
-export const MAX_PDF_BYTES = 50 * 1024 * 1024
+import { MAX_INDIVIDUAL_PDF_BYTES } from '#/lib/storage/capacity'
+
+export const MAX_PDF_BYTES = MAX_INDIVIDUAL_PDF_BYTES
 export const PDF_MIME = 'application/pdf'
 
 /** Returns a user-facing error message, or null if the file is acceptable. */

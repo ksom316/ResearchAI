@@ -13,6 +13,7 @@
  */
 export type ExtractionFailureKind =
   | 'llm_unavailable'
+  | 'usage_exhausted'
   | 'truncated'
   | 'persistence'
   | 'persistence_permanent'
@@ -44,6 +45,7 @@ export function decideExtractionFailure(
 /** Short, fixed, internal messages. Never contain model output, paper text or keys. */
 export const FAILURE_MESSAGE: Record<ExtractionFailureKind, string> = {
   llm_unavailable: 'The language model was unavailable.',
+  usage_exhausted: 'The monthly AI usage allowance was reached.',
   truncated: 'The model response was cut off before it finished.',
   persistence: 'Saving the extraction failed.',
   persistence_permanent: 'The database rejected the extraction.',

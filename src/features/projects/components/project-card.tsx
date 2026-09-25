@@ -25,7 +25,7 @@ export function ProjectCard({ project }: { project: ResearchProject }) {
           <span className="flex size-10 items-center justify-center rounded-lg bg-accent text-accent-foreground">
             <FlaskConical className="size-5" />
           </span>
-          <DropdownMenu>
+          {project.role === 'OWNER' && <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
@@ -47,7 +47,7 @@ export function ProjectCard({ project }: { project: ResearchProject }) {
                 <Trash2 /> Delete
               </DropdownMenuItem>
             </DropdownMenuContent>
-          </DropdownMenu>
+          </DropdownMenu>}
         </div>
 
         <div className="min-w-0 flex-1 space-y-1">
@@ -60,9 +60,9 @@ export function ProjectCard({ project }: { project: ResearchProject }) {
               {project.title}
             </Link>
           </h3>
-          <p className="line-clamp-2 min-h-10 text-sm text-muted-foreground">
+          <div className="flex items-center gap-2"><p className="line-clamp-2 min-h-10 flex-1 text-sm text-muted-foreground">
             {project.description || 'No description yet.'}
-          </p>
+          </p>{project.role && project.role !== 'OWNER' && <span className="rounded-full bg-accent px-2 py-1 text-xs text-accent-foreground">{project.role === 'EDITOR' ? 'Editor · Shared' : 'Viewer · Shared'}</span>}</div>
         </div>
 
         <p className="text-xs text-muted-foreground">

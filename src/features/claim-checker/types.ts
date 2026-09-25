@@ -94,13 +94,14 @@ export type ClaimCheckAssessmentError =
   | ClaimCheckEvidenceError
   | 'checker_busy'
   | 'checker_timeout'
+  | 'usage_exhausted'
   | 'checker_unavailable'
   | 'checker_truncated'
   | 'invalid_output'
   | 'invalid_assessment'
 
 export type ClaimCheckResult =
-  | { ok: false; error: ClaimCheckAssessmentError }
+  | { ok: false; error: ClaimCheckAssessmentError; resetDate?: string }
   | {
       ok: true
       status: 'insufficient_evidence'

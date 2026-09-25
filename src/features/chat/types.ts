@@ -26,6 +26,7 @@ export type ChatErrorCode =
   | 'search_unavailable'
   | 'answer_busy' // LLM rate limited
   | 'answer_timeout' // LLM took too long
+  | 'usage_exhausted'
   | 'answer_unavailable' // LLM failure, unusable output, or nothing grounded
 
 export type ChatStatus =
@@ -45,4 +46,4 @@ export type AskOutcome =
       followUps: string[]
       coverage: PaperCoverage[]
     }
-  | { ok: false; error: ChatErrorCode }
+  | { ok: false; error: ChatErrorCode; resetDate?: string }

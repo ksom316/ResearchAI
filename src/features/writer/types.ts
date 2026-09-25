@@ -161,6 +161,7 @@ export type WriterGenerationErrorCode =
   | WriterEvidenceErrorCode
   | 'writer_busy'
   | 'writer_timeout'
+  | 'usage_exhausted'
   | 'writer_unavailable'
   | 'writer_truncated'
   | 'invalid_output'
@@ -168,7 +169,7 @@ export type WriterGenerationErrorCode =
   | 'invalid_content'
 
 export type WriterGenerationResult =
-  | { ok: false; error: WriterGenerationErrorCode }
+  | { ok: false; error: WriterGenerationErrorCode; resetDate?: string }
   | {
       ok: true
       status: 'generated'

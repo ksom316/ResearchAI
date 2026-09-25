@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { embedSearchQuery } from './query-embedder.server'
+import type { UsageEventInput } from '#/lib/usage/types'
 
 const vector = Array.from({ length: 1024 }, (_, i) => i / 1024)
 const okResponse = () =>
@@ -33,6 +34,35 @@ describe('embedSearchQuery (fake fetch, no real Voyage)', () => {
       output_dimension: 1024,
     })
     expect(JSON.stringify(body)).not.toMatch(/ctx-v1|Title:|Section:/i)
+  })
+
+  it('records provider-reported query tokens with the trusted actor and project', async () => {
+    const events: UsageEventInput[] = []
+    vi.stubGlobal('fetch', vi.fn(async () => okResponse()))
+    await embedSearchQuery(
+      'What is BERT?',
+      { EMBEDDING_API_KEY: 'pa-test-key-not-real-000000' },
+      {
+        actorUserId: 'ama',
+        projectId: 'project-a',
+        feature: 'semantic_search',
+        recordUsage: async (event) => {
+          events.push(event)
+        },
+      },
+    )
+    expect(events).toEqual([
+      expect.objectContaining({
+        actorUserId: 'ama',
+        projectId: 'project-a',
+        eventType: 'embedding_request',
+        provider: 'voyage',
+        model: 'voyage-4',
+        inputTokens: 4,
+        totalTokens: 4,
+        quantity: 1,
+      }),
+    ])
   })
 
   it('makes a single attempt on 429 and reports it as a rate limit', async () => {

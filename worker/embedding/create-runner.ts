@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { createSupabaseUsageRecorder } from '../../src/lib/usage/recorder.server'
 import { INPUT_PROFILE_CTX_V1 } from '../../src/lib/embedding/input'
 import {
   VOYAGE_PHASE4_PROFILE,
@@ -64,5 +65,6 @@ export function createEmbeddingRunner(options: {
     },
     log,
     paperId,
+    recordUsage: createSupabaseUsageRecorder(client),
   })
 }

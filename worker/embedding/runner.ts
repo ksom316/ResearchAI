@@ -12,6 +12,7 @@ import type {
   JobFailure,
   ProfileRef,
 } from './types'
+import type { UsageRecorder } from '../../src/lib/usage/types'
 
 export type Logger = (message: string) => void
 
@@ -38,6 +39,8 @@ export type RunnerDeps = {
   log?: Logger
   /** Restrict claiming to one paper (the manual command). */
   paperId?: string
+  /** Trusted service-role append path; failures never stop indexing. */
+  recordUsage?: UsageRecorder
 }
 
 export type JobSummary = {
@@ -230,6 +233,23 @@ export class EmbeddingJobRunner {
     ticket.settle(result.tokens)
     estimator.observe(chars, result.tokens)
     active.billedTokens += result.tokens ?? 0
+
+    await this.deps.recordUsage?.({
+      actorUserId: active.job.userId,
+      projectId: null,
+      feature: 'embedding_indexing',
+      eventType: 'embedding_request',
+      provider: active.job.profile.provider,
+      model: active.job.profile.providerModel,
+      inputTokens: result.tokens,
+      totalTokens: result.tokens,
+      quantity: batch.length,
+      idempotencyKey:
+        `embedding:${active.job.paperId}:${active.job.claimStartedAt}:${active.requests}`,
+      metadata: { input_type: 'document', batch_items: batch.length },
+    }).catch(() => {
+      log?.(`paper ${active.job.paperId}: usage recording unavailable`)
+    })
 
     const rows = toEmbeddingRows(
       batch,

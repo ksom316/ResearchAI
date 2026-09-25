@@ -1,5 +1,6 @@
 import { LlmError } from '#/lib/llm'
 import type { LlmProvider, ReasoningConfig } from '#/lib/llm'
+import { UsageAllowanceExceededError } from '#/lib/usage/types'
 import {
   claimCheckProviderDiagnostic,
   claimCheckResultDiagnostic,
@@ -9,10 +10,7 @@ import type { ClaimCheckDiagnostic } from './diagnostics.server'
 import type { WriterDb } from '#/features/writer/writer-db.server'
 import { prepareClaimCheckEvidence } from './evidence'
 import { CLAIM_CHECK_JSON_SCHEMA } from './model-schema'
-import {
-  buildClaimCheckUserMessage,
-  CLAIM_CHECK_SYSTEM_PROMPT,
-} from './prompt'
+import { buildClaimCheckUserMessage, CLAIM_CHECK_SYSTEM_PROMPT } from './prompt'
 import type {
   ClaimCheckAssessmentError,
   ClaimCheckEvidenceResult,
@@ -49,18 +47,23 @@ export type ClaimCheckAssessmentDeps = {
   logDiagnostic?: (diagnostic: ClaimCheckDiagnostic) => void
 }
 
-function providerError(error: unknown): ClaimCheckAssessmentError {
-  if (!(error instanceof LlmError)) return 'checker_unavailable'
-  if (error.kind === 'rate_limited') return 'checker_busy'
-  if (error.kind === 'timeout') return 'checker_timeout'
+function providerError(error: unknown): {
+  code: ClaimCheckAssessmentError
+  resetDate?: string
+} {
+  if (error instanceof UsageAllowanceExceededError)
+    return { code: 'usage_exhausted', resetDate: error.resetDate }
+  if (!(error instanceof LlmError)) return { code: 'checker_unavailable' }
+  if (error.kind === 'rate_limited') return { code: 'checker_busy' }
+  if (error.kind === 'timeout') return { code: 'checker_timeout' }
   if (
     error.kind === 'invalid_response' &&
     error.diagnostic?.category === 'truncated'
   ) {
-    return 'checker_truncated'
+    return { code: 'checker_truncated' }
   }
-  if (error.kind === 'invalid_response') return 'invalid_output'
-  return 'checker_unavailable'
+  if (error.kind === 'invalid_response') return { code: 'invalid_output' }
+  return { code: 'checker_unavailable' }
 }
 
 function report(
@@ -110,9 +113,14 @@ export async function assessClaimSupport(
       signal: deps.signal,
     })
   } catch (error) {
-    const errorCode = providerError(error)
+    const failure = providerError(error)
+    const errorCode = failure.code
     report(deps, claimCheckProviderDiagnostic(errorCode, error))
-    return { ok: false, error: errorCode }
+    return {
+      ok: false,
+      error: errorCode,
+      ...(failure.resetDate ? { resetDate: failure.resetDate } : {}),
+    }
   }
 
   if (result.finishReason === 'length') {
@@ -134,11 +142,7 @@ export async function assessClaimSupport(
   if (!validated.ok) {
     report(
       deps,
-      claimCheckResultDiagnostic(
-        'validation',
-        validated.error,
-        result,
-      ),
+      claimCheckResultDiagnostic('validation', validated.error, result),
     )
     return validated
   }

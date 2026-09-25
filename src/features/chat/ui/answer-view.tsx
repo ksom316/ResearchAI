@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { AlertCircle, FileText, Info } from 'lucide-react'
 import { cn } from 'cn'
 import { formatPages, humanize } from '#/lib/format'
+import { allowanceReachedMessage } from '#/lib/usage/presentation'
 import type { AskOutcome, ChatCitation } from '../types'
 import {
   ERROR_MESSAGES,
@@ -123,12 +124,12 @@ export function AnswerView({
   viewPaper: (paperId: string) => ReactNode
 }) {
   if (!outcome.ok) {
-    return (
-      <Note tone="error">
-        {(ERROR_MESSAGES as Partial<Record<string, string>>)[outcome.error] ??
-          FALLBACK_ERROR_MESSAGE}
-      </Note>
-    )
+    const message =
+      outcome.error === 'usage_exhausted' && outcome.resetDate
+        ? allowanceReachedMessage(outcome.resetDate)
+        : ((ERROR_MESSAGES as Partial<Record<string, string>>)[outcome.error] ??
+          FALLBACK_ERROR_MESSAGE)
+    return <Note tone="error">{message}</Note>
   }
 
   if (outcome.status === 'no_evidence') {

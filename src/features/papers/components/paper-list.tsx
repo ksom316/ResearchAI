@@ -20,11 +20,13 @@ import { PaperRow } from './paper-row'
  */
 export function PaperList({
   projectId,
+  canEdit = true,
   limit,
   emptyDescription = 'Papers you add will appear here.',
   emptyAction,
 }: {
   projectId?: string
+  canEdit?: boolean
   limit?: number
   emptyDescription?: string
   emptyAction?: ReactNode
@@ -96,11 +98,11 @@ export function PaperList({
               onOpen={(p) => open.mutate(p)}
               onAssign={projectId ? undefined : (p) => setAssigningId(p.id)}
               onUnlink={
-                projectId
+                projectId && canEdit
                   ? (p) => unlink.mutate({ paperId: p.id, projectId })
                   : undefined
               }
-              onDelete={setDeleting}
+              onDelete={canEdit ? setDeleting : () => undefined}
             />
           ))}
         </ul>

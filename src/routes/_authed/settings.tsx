@@ -7,6 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from '#/components/ui/card'
+import { UsagePanel } from '#/features/usage/ui/usage-panel'
 
 export const Route = createFileRoute('/_authed/settings')({
   head: () => ({ meta: [{ title: 'Settings · ResearchAI' }] }),
@@ -35,6 +36,7 @@ function SettingsPage() {
           </dl>
         </CardContent>
       </Card>
+      <UsagePanel />
     </>
   )
 }

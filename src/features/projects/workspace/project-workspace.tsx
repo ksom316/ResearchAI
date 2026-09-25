@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useNavigate } from '@tanstack/react-router'
-import { ArrowLeft, FlaskConical, Pencil, Trash2 } from 'lucide-react'
+import { ArrowLeft, FlaskConical, Pencil, Share2, Trash2 } from 'lucide-react'
 import { EmptyState } from '#/components/empty-state'
 import { QueryError } from '#/components/query-error'
 import { Button } from '#/components/ui/button'
@@ -16,7 +16,8 @@ import { AcademicWriterTab } from '#/features/writer/ui/academic-writer-tab'
 import { QualityInspectorTab } from '#/features/quality-inspector/ui/quality-inspector-tab'
 import { DeleteProjectDialog } from '../components/delete-project-dialog'
 import { RenameProjectDialog } from '../components/rename-project-dialog'
-import { projectQuery } from '../queries'
+import { CollaborationDialog } from '../components/collaboration-dialog'
+import { projectQuery, projectRoleQuery } from '../queries'
 import { OverviewTab } from './overview-tab'
 import { PapersTab } from './papers-tab'
 import { PlaceholderTab } from './placeholder-tab'
@@ -49,6 +50,10 @@ export function ProjectWorkspace({
   } = useQuery(projectQuery(projectId))
   const [renameOpen, setRenameOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
+  const [collaborationOpen, setCollaborationOpen] = useState(false)
+  const { data: role } = useQuery(projectRoleQuery(projectId))
+  const canEdit = role === 'OWNER' || role === 'EDITOR'
+  const isOwner = role === 'OWNER'
 
   const back = (
     <Link
@@ -99,17 +104,17 @@ export function ProjectWorkspace({
         description={project.description ?? undefined}
         actions={
           <>
-            <Button variant="outline" onClick={() => setRenameOpen(true)}>
-              <Pencil /> Edit
-            </Button>
-            <Button
+            <span className="self-center text-sm text-muted-foreground">{role === 'OWNER' ? 'Owner' : role === 'EDITOR' ? 'Editor' : 'Viewer'}</span>
+            <Button variant="outline" onClick={() => setCollaborationOpen(true)}><Share2 /> <span className="hidden sm:inline">Members</span></Button>
+            {isOwner && <Button variant="outline" onClick={() => setRenameOpen(true)}><Pencil /> Edit</Button>}
+            {isOwner && <Button
               variant="outline"
               size="icon"
               aria-label="Delete project"
               onClick={() => setDeleteOpen(true)}
             >
               <Trash2 />
-            </Button>
+            </Button>}
           </>
         }
       />
@@ -137,7 +142,7 @@ export function ProjectWorkspace({
           <OverviewTab project={project} />
         </TabsContent>
         <TabsContent value="papers" className="mt-6">
-          <PapersTab projectId={project.id} />
+          <PapersTab projectId={project.id} canEdit={canEdit} />
         </TabsContent>
         <TabsContent value="ai-research" className="mt-6">
           <ChatPanel key={project.id} projectId={project.id} />
@@ -173,17 +178,18 @@ export function ProjectWorkspace({
         )}
       </Tabs>
 
-      <RenameProjectDialog
+      {isOwner && <RenameProjectDialog
         project={project}
         open={renameOpen}
         onOpenChange={setRenameOpen}
-      />
-      <DeleteProjectDialog
+      />}
+      {isOwner && <DeleteProjectDialog
         project={project}
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
         onDeleted={() => void navigate({ to: '/projects' })}
-      />
+      />}
+      <CollaborationDialog projectId={project.id} open={collaborationOpen} onOpenChange={setCollaborationOpen} owner={isOwner} />
     </>
   )
 }

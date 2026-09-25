@@ -1,6 +1,7 @@
 import { LlmError } from '#/lib/llm'
 import type { LlmProvider, ReasoningConfig } from '#/lib/llm'
 import type { PaperCitationMetadata } from '#/features/citations/types'
+import { UsageAllowanceExceededError } from '#/lib/usage/types'
 import {
   logWriterGenerationDiagnostic,
   writerProviderFailureDiagnostic,
@@ -16,10 +17,7 @@ import type {
   WriterGenerationResult,
 } from './types'
 import { validateWriterDraft } from './validate-draft'
-import {
-  attachGroundedDraftReferences,
-  citedPaperIds,
-} from './references'
+import { attachGroundedDraftReferences, citedPaperIds } from './references'
 
 export const MAX_WRITER_OUTPUT_TOKENS = 1_800
 export const WRITER_REASONING: ReasoningConfig = { effort: 'none' }
@@ -60,18 +58,23 @@ function reportDiagnostic(
   logWriterGenerationDiagnostic(diagnostic, deps.diagnosticsEnabled)
 }
 
-function providerError(error: unknown): WriterGenerationErrorCode {
-  if (!(error instanceof LlmError)) return 'writer_unavailable'
-  if (error.kind === 'rate_limited') return 'writer_busy'
-  if (error.kind === 'timeout') return 'writer_timeout'
+function providerError(error: unknown): {
+  code: WriterGenerationErrorCode
+  resetDate?: string
+} {
+  if (error instanceof UsageAllowanceExceededError)
+    return { code: 'usage_exhausted', resetDate: error.resetDate }
+  if (!(error instanceof LlmError)) return { code: 'writer_unavailable' }
+  if (error.kind === 'rate_limited') return { code: 'writer_busy' }
+  if (error.kind === 'timeout') return { code: 'writer_timeout' }
   if (
     error.kind === 'invalid_response' &&
     error.diagnostic?.category === 'truncated'
   ) {
-    return 'writer_truncated'
+    return { code: 'writer_truncated' }
   }
-  if (error.kind === 'invalid_response') return 'invalid_output'
-  return 'writer_unavailable'
+  if (error.kind === 'invalid_response') return { code: 'invalid_output' }
+  return { code: 'writer_unavailable' }
 }
 
 /**
@@ -115,12 +118,17 @@ export async function generateWriterDraft(
       signal: deps.signal,
     })
   } catch (error) {
-    const errorCode = providerError(error)
+    const failure = providerError(error)
+    const errorCode = failure.code
     reportDiagnostic(
       deps,
       writerProviderFailureDiagnostic(prepared.request.mode, errorCode, error),
     )
-    return { ok: false, error: errorCode }
+    return {
+      ok: false,
+      error: errorCode,
+      ...(failure.resetDate ? { resetDate: failure.resetDate } : {}),
+    }
   }
 
   if (result.finishReason === 'length') {

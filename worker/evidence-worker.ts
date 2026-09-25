@@ -1,4 +1,7 @@
 import { createServerLlm } from '../src/features/chat/llm.server'
+import { createMeteredLlm } from '../src/lib/usage/metered-llm'
+import { createSupabaseUsageRecorder } from '../src/lib/usage/recorder.server'
+import { createSupabaseUsageAllowanceChecker } from '../src/lib/usage/allowance.server'
 import { ConfigError, loadConfig } from './config'
 import { describeError } from './diagnostics'
 import { createSupabaseExtractionStore } from './evidence/job-store'
@@ -31,7 +34,10 @@ async function main() {
   const config = loadConfig()
   // Fail fast on missing LLM configuration instead of failing every paper later.
   const llm = createServerLlm()
-  const store = createSupabaseExtractionStore(createWorkerClient(config), {
+  const client = createWorkerClient(config)
+  const recordUsage = createSupabaseUsageRecorder(client)
+  const checkAllowance = createSupabaseUsageAllowanceChecker(client)
+  const store = createSupabaseExtractionStore(client, {
     maxAttempts: config.maxAttempts,
     staleAfterMinutes: config.staleAfterMinutes,
   })
@@ -51,7 +57,17 @@ async function main() {
     runNextJob: () =>
       runNextExtraction({
         store,
-        getLlm: () => llm,
+        getLlm: (context) =>
+          context
+            ? createMeteredLlm(llm, {
+                actorUserId: context.actorUserId,
+                projectId: context.projectId,
+                feature: 'evidence_matrix',
+                operationKey: context.operationKey,
+                recordUsage,
+                checkAllowance,
+              })
+            : llm,
         maxAttempts: config.maxAttempts,
         log,
         signal: controller.signal,

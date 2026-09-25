@@ -1,4 +1,5 @@
 import { createVoyageProvider, EmbeddingError } from '#/lib/embedding'
+import type { UsageFeature, UsageRecorder } from '#/lib/usage/types'
 
 /**
  * SERVER ONLY (the .server suffix keeps it out of browser bundles). Embeds one search
@@ -10,10 +11,27 @@ import { createVoyageProvider, EmbeddingError } from '#/lib/embedding'
  */
 export const QUERY_TIMEOUT_MS = 10_000
 
+export type QueryEmbeddingUsage = {
+  actorUserId: string
+  projectId: string | null
+  feature: Extract<UsageFeature, 'research_chat' | 'academic_writer' | 'semantic_search'>
+  recordUsage: UsageRecorder
+  operationKey?: string
+}
+
+const isQueryEmbeddingUsage = (
+  value: Record<string, string | undefined> | QueryEmbeddingUsage,
+): value is QueryEmbeddingUsage =>
+  typeof (value as { actorUserId?: unknown }).actorUserId === 'string' &&
+  typeof (value as { recordUsage?: unknown }).recordUsage === 'function'
+
 export async function embedSearchQuery(
   query: string,
-  env: Record<string, string | undefined> = process.env,
+  envOrUsage: Record<string, string | undefined> | QueryEmbeddingUsage = process.env,
+  usage?: QueryEmbeddingUsage,
 ): Promise<number[]> {
+  const env = isQueryEmbeddingUsage(envOrUsage) ? process.env : envOrUsage
+  const metering = isQueryEmbeddingUsage(envOrUsage) ? envOrUsage : usage
   const apiKey = env.EMBEDDING_API_KEY
   if (!apiKey || apiKey.trim() === '') {
     throw new EmbeddingError('invalid_input', 'Embedding is not configured')
@@ -23,5 +41,21 @@ export async function embedSearchQuery(
     maxAttempts: 1,
     timeoutMs: QUERY_TIMEOUT_MS,
   })
-  return (await provider.embedQuery(query)).vector
+  const result = await provider.embedQuery(query)
+  if (metering) {
+    await metering.recordUsage({
+      actorUserId: metering.actorUserId,
+      projectId: metering.projectId,
+      feature: metering.feature,
+      eventType: 'embedding_request',
+      provider: provider.profile.provider,
+      model: provider.profile.model,
+      inputTokens: result.tokens,
+      totalTokens: result.tokens,
+      quantity: 1,
+      idempotencyKey: `${metering.operationKey ?? crypto.randomUUID()}:query`,
+      metadata: { input_type: 'query' },
+    }).catch(() => undefined)
+  }
+  return result.vector
 }

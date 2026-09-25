@@ -53,5 +53,8 @@ export type StructuredResult = {
 }
 
 export interface LlmProvider {
+  /** Optional safe identifiers used by trusted metering and diagnostics. */
+  readonly providerName?: string
+  readonly modelName?: string
   generateStructured: (request: StructuredRequest) => Promise<StructuredResult>
 }

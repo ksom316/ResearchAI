@@ -3,6 +3,7 @@ import type { SearchDeps } from '#/features/search/search-service'
 import type { SearchErrorCode } from '#/features/search/types'
 import { LlmError } from '#/lib/llm'
 import type { LlmProvider, StructuredResult } from '#/lib/llm'
+import { UsageAllowanceExceededError } from '#/lib/usage/types'
 import { buildEvidence, MAX_EVIDENCE_HITS } from './evidence'
 import { buildUserMessage, SYSTEM_PROMPT } from './prompt'
 import {
@@ -44,16 +45,25 @@ export type AnswerDeps = {
   diagnostic?: (diagnostic: ResearchChatDiagnostic) => void
 }
 
-const fail = (error: ChatErrorCode): AskOutcome => ({ ok: false, error })
+const fail = (error: ChatErrorCode, resetDate?: string): AskOutcome => ({
+  ok: false,
+  error,
+  ...(resetDate ? { resetDate } : {}),
+})
 
 const searchError = (code: SearchErrorCode): ChatErrorCode => code
 
-function llmError(error: unknown): ChatErrorCode {
+function llmError(error: unknown): {
+  code: ChatErrorCode
+  resetDate?: string
+} {
+  if (error instanceof UsageAllowanceExceededError)
+    return { code: 'usage_exhausted', resetDate: error.resetDate }
   if (error instanceof LlmError) {
-    if (error.kind === 'rate_limited') return 'answer_busy'
-    if (error.kind === 'timeout') return 'answer_timeout'
+    if (error.kind === 'rate_limited') return { code: 'answer_busy' }
+    if (error.kind === 'timeout') return { code: 'answer_timeout' }
   }
-  return 'answer_unavailable'
+  return { code: 'answer_unavailable' }
 }
 
 /**
@@ -126,7 +136,8 @@ export async function runGroundedAnswer(
         reasoning: { effort: 'none' },
       })
     } catch (error) {
-      const errorCode = llmError(error)
+      const failure = llmError(error)
+      const errorCode = failure.code
       emit(
         researchChatProviderFailureDiagnostic(
           {
@@ -138,7 +149,7 @@ export async function runGroundedAnswer(
           error,
         ),
       )
-      return fail(errorCode)
+      return fail(errorCode, failure.resetDate)
     }
 
     const answer = modelAnswerSchema.safeParse(result.data)

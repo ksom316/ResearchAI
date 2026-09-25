@@ -4,4 +4,5 @@ export type ResearchProject = {
   description: string | null
   created_at: string
   updated_at: string
+  role?: 'OWNER' | 'EDITOR' | 'VIEWER'
 }

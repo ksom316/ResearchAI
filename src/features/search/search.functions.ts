@@ -4,6 +4,9 @@ import { embedSearchQuery } from './query-embedder.server'
 import { createSupabaseSearchDb } from './search-db'
 import { runSearchCoverage, runSemanticSearch } from './search-service'
 import type { SearchCoverageOutcome, SearchOutcome } from './types'
+import { searchRequestSchema } from './schemas'
+import { createBestEffortServerUsageRecorder } from '#/lib/usage/recorder.server'
+import { requireProjectEditor } from '#/lib/projects/authorization.server'
 
 /**
  * Explicit, authenticated semantic search (never called on keystroke). Input is
@@ -11,19 +14,36 @@ import type { SearchCoverageOutcome, SearchOutcome } from './types'
  */
 export const semanticSearchFn = createServerFn({ method: 'POST' })
   .validator((data: unknown) => data)
-  .handler(async ({ data }): Promise<SearchOutcome> =>
-    runSemanticSearch(data, {
-      db: createSupabaseSearchDb(createSupabaseServerClient()),
-      embedQuery: (query) => embedSearchQuery(query),
-    }),
-  )
+  .handler(async ({ data }): Promise<SearchOutcome> => {
+    const supabase = createSupabaseServerClient()
+    const actorUserId = (await supabase.auth.getUser()).data.user?.id ?? null
+    const parsed = searchRequestSchema.safeParse(data)
+    const projectId =
+      parsed.success && parsed.data.scope.type === 'project'
+        ? parsed.data.scope.projectId
+        : null
+    if (projectId) await requireProjectEditor(supabase, projectId)
+    const recordUsage = createBestEffortServerUsageRecorder()
+    return runSemanticSearch(data, {
+      db: createSupabaseSearchDb(supabase),
+      embedQuery: (query) =>
+        actorUserId
+          ? embedSearchQuery(query, {
+              actorUserId,
+              projectId,
+              feature: 'semantic_search',
+              recordUsage,
+            })
+          : embedSearchQuery(query),
+    })
+  })
 
 /** Authenticated coverage-only inspection; never embeds a query or searches chunks. */
 export const searchCoverageFn = createServerFn({ method: 'GET' })
   .validator((data: unknown) => data)
-  .handler(async ({ data }): Promise<SearchCoverageOutcome> =>
-    runSearchCoverage(
-      data,
-      createSupabaseSearchDb(createSupabaseServerClient()),
-    ),
-  )
+  .handler(async ({ data }): Promise<SearchCoverageOutcome> => {
+    const supabase = createSupabaseServerClient()
+    const parsed = searchRequestSchema.safeParse(data)
+    if (parsed.success && parsed.data.scope.type === 'project') await requireProjectEditor(supabase, parsed.data.scope.projectId)
+    return runSearchCoverage(data, createSupabaseSearchDb(supabase))
+  })

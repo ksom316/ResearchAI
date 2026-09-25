@@ -23,6 +23,8 @@ export const ERROR_MESSAGES: Record<ChatErrorCode, string> = {
     'The answer service is busy right now. Wait a moment and ask again.',
   answer_timeout:
     'The answer took too long. Please try again, or ask a narrower question.',
+  usage_exhausted:
+    'Your monthly AI usage allowance has been reached. It resets at the start of next month.',
   answer_unavailable:
     'An answer could not be produced from your papers this time. Please try again.',
 }

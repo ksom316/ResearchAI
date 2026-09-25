@@ -1,5 +1,6 @@
 import { getSupabaseBrowserClient } from '#/lib/supabase/client'
 import { getSignedUrl, removeObject, uploadObject } from './storage'
+import { releaseStorageReservation, reserveStorageUpload } from './storage-quota'
 import type { Paper, PaperSection } from './types'
 import {
   PDF_MIME,
@@ -162,52 +163,59 @@ export async function uploadPaper(input: {
   const existing = await findByHash(hash)
   if (existing) return reuseExisting(existing, input.projectId)
 
+  const reservation = await reserveStorageUpload(input.file.size)
+
   const paperId = crypto.randomUUID()
   const path = `${userId}/${paperId}/${sanitizeFilename(input.file.name)}`
+  let paperSaved = false
 
-  await uploadObject(path, input.file, input.onProgress)
+  try {
+    await uploadObject(path, input.file, input.onProgress)
 
-  const { data, error } = await supabase
-    .from('papers')
-    .insert({
-      id: paperId,
-      user_id: userId,
-      title: titleFromFilename(input.file.name),
-      original_filename: input.file.name.slice(0, 255),
-      mime_type: PDF_MIME,
-      storage_path: path,
-      content_hash: hash,
-      file_size_bytes: input.file.size,
-      // status is not client-writable; the database default ('uploaded') applies.
-    })
-    .select(COLUMNS)
-    .single()
+    const { data, error } = await supabase
+      .from('papers')
+      .insert({
+        id: paperId,
+        user_id: userId,
+        title: titleFromFilename(input.file.name),
+        original_filename: input.file.name.slice(0, 255),
+        mime_type: PDF_MIME,
+        storage_path: path,
+        storage_reservation_id: reservation.id,
+        content_hash: hash,
+        file_size_bytes: input.file.size,
+        // status is not client-writable; the database default ('uploaded') applies.
+      })
+      .select(COLUMNS)
+      .single()
 
-  if (error) {
-    await removeObject(path).catch(() => undefined)
-    if (error.code === '23505') {
-      // Lost a race with an identical upload: reuse the winner.
-      const winner = await findByHash(hash)
-      if (winner) return reuseExisting(winner, input.projectId)
+    if (error) {
+      if (error.code === '23505') {
+        const winner = await findByHash(hash)
+        if (winner) {
+          await removeObject(path).catch(() => undefined)
+          await releaseStorageReservation(reservation.id)
+          return reuseExisting(winner, input.projectId)
+        }
+      }
+      throw new Error(`Couldn’t save the paper record: ${error.message}`)
     }
-    throw new Error(`Couldn’t save the paper record: ${error.message}`)
-  }
 
-  const row = data as unknown as Omit<Paper, 'project_ids'>
-  if (input.projectId) {
-    try {
+    const row = data as unknown as Omit<Paper, 'project_ids'>
+    paperSaved = true
+    if (input.projectId) {
       await linkPaperToProject(paperId, input.projectId)
-    } catch (e) {
-      // The paper is saved and visible in the Library; only the link failed.
-      const detail = e instanceof Error ? e.message : ''
-      throw new Error(
-        `Uploaded to your Library, but couldn’t add it to the project. ${detail}`.trim(),
-      )
     }
-  }
-  return {
-    kind: 'created',
-    paper: { ...row, project_ids: input.projectId ? [input.projectId] : [] },
+    return {
+      kind: 'created',
+      paper: { ...row, project_ids: input.projectId ? [input.projectId] : [] },
+    }
+  } catch (error) {
+    if (!paperSaved) {
+      await removeObject(path).catch(() => undefined)
+      await releaseStorageReservation(reservation.id)
+    }
+    throw error
   }
 }
 

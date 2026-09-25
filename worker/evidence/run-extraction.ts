@@ -29,7 +29,11 @@ export type ExtractionJobResult =
 export type RunExtractionDeps = {
   store: ExtractionStore
   /** Only called when routed evidence exists. Tests pass a fake provider. */
-  getLlm: () => LlmProvider
+  getLlm: (context?: {
+    actorUserId: string
+    projectId: string | null
+    operationKey: string
+  }) => LlmProvider
   maxAttempts: number
   log?: (message: string) => void
   signal?: AbortSignal
@@ -102,7 +106,12 @@ export async function runNextExtraction(
     }
 
     const outcome = await extractEvidenceMatrix(loaded.input, {
-      getLlm: deps.getLlm,
+      getLlm: () =>
+        deps.getLlm({
+          actorUserId: claim.userId,
+          projectId: null,
+          operationKey: `evidence-matrix:${claim.paperId}:${claim.claimStartedAt}`,
+        }),
       signal: deps.signal,
     })
     if (!outcome.ok) return await failWith(outcome.error, outcome.diagnostic)

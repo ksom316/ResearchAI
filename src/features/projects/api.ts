@@ -1,5 +1,6 @@
 import { getSupabaseBrowserClient } from '#/lib/supabase/client'
 import type { ResearchProject } from './types'
+import { getProjectRole } from './collaboration'
 
 const COLUMNS = 'id, title, description, created_at, updated_at'
 
@@ -13,7 +14,7 @@ export async function listProjects(limit?: number): Promise<ResearchProject[]> {
   if (limit) query = query.limit(limit)
   const { data, error } = await query
   if (error) throw error
-  return data as ResearchProject[]
+  return Promise.all((data as ResearchProject[]).map(async (project) => ({ ...project, role: await getProjectRole(project.id) ?? undefined })))
 }
 
 export async function getProject(id: string): Promise<ResearchProject | null> {
@@ -23,7 +24,7 @@ export async function getProject(id: string): Promise<ResearchProject | null> {
     .eq('id', id)
     .maybeSingle()
   if (error) throw error
-  return data as ResearchProject | null
+  return data ? { ...(data as ResearchProject), role: await getProjectRole(id) ?? undefined } : null
 }
 
 export async function createProject(
