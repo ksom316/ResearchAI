@@ -20,6 +20,7 @@ export default [
       'prettier.config.js',
       '.output',
       '.vercel',
+      'public/sw.js',
     ],
   },
 ]

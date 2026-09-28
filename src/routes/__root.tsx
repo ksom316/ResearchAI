@@ -8,6 +8,9 @@ import { TanStackDevtools } from '@tanstack/react-devtools'
 
 import TanStackQueryDevtools from '../integrations/tanstack-query/devtools'
 import { Toaster } from '#/components/ui/sonner'
+import { registerServiceWorker } from '#/lib/register-sw'
+
+import { useEffect } from 'react'
 
 import appCss from '../styles.css?url'
 
@@ -54,12 +57,17 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
       { rel: 'stylesheet', href: appCss },
       { rel: 'icon', type: 'image/png', href: ICON_PATH },
       { rel: 'apple-touch-icon', href: ICON_PATH },
+      { rel: 'manifest', href: '/manifest.webmanifest' },
     ],
   }),
   shellComponent: RootDocument,
 })
 
 function RootDocument({ children }: { children: React.ReactNode }) {
+  useEffect(() => {
+    if (import.meta.env.PROD) registerServiceWorker()
+  }, [])
+
   return (
     <html lang="en">
       <head>
