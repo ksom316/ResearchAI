@@ -10,7 +10,7 @@ export function Brand({
   return (
     <div className={cn('flex items-center gap-2.5', className)}>
       <img
-        src="/researchai-icon.png"
+        src="/evidara-icon.png"
         alt=""
         width={40}
         height={40}
@@ -22,7 +22,7 @@ export function Brand({
           tone === 'light' && 'text-white',
         )}
       >
-        ResearchAI
+        Evidara
       </span>
     </div>
   )

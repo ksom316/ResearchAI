@@ -77,11 +77,11 @@ const WORKFLOW = [
   'Verify claims',
 ]
 
-function ResearchAIMark({ light = false }: { light?: boolean }) {
+function EvidaraMark({ light = false }: { light?: boolean }) {
   return (
     <span className="flex min-w-0 items-center gap-2.5">
       <img
-        src="/researchai-icon.png"
+        src="/evidara-icon.png"
         alt=""
         width={40}
         height={40}
@@ -90,7 +90,7 @@ function ResearchAIMark({ light = false }: { light?: boolean }) {
       <span
         className={`font-heading text-xl font-semibold ${light ? 'text-white' : 'text-foreground'}`}
       >
-        ResearchAI
+        Evidara
       </span>
     </span>
   )
@@ -103,8 +103,8 @@ function PublicNavigation() {
         aria-label="Main navigation"
         className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8"
       >
-        <a href="#top" aria-label="ResearchAI home" className="shrink-0">
-          <ResearchAIMark />
+        <a href="#top" aria-label="Evidara home" className="shrink-0">
+          <EvidaraMark />
         </a>
 
         <div className="hidden items-center gap-7 text-sm font-medium text-muted-foreground md:flex">
@@ -115,7 +115,7 @@ function PublicNavigation() {
             How it works
           </a>
           <a className="transition-colors hover:text-foreground" href="#why-researchai">
-            Why ResearchAI
+            Why Evidara
           </a>
         </div>
 
@@ -142,7 +142,7 @@ function PublicNavigation() {
                 How it works
               </a>
               <a className="rounded-md px-3 py-3 hover:bg-accent" href="#why-researchai">
-                Why ResearchAI
+                Why Evidara
               </a>
               <div className="my-2 border-t" />
               <Link className="rounded-md px-3 py-3 hover:bg-accent" to="/sign-in">
@@ -166,7 +166,7 @@ function ProductPreview() {
   return (
     <div
       className="relative mx-auto w-full max-w-xl"
-      aria-label="ResearchAI evidence workspace preview"
+      aria-label="Evidara evidence workspace preview"
     >
       <div className="absolute -inset-8 -z-10 rounded-full bg-primary/10 blur-3xl" />
       <div className="overflow-hidden rounded-2xl border bg-card shadow-2xl shadow-primary/10">
@@ -256,7 +256,7 @@ export function LandingPage() {
                 Turn research papers into evidence you can actually work with.
               </h1>
               <p className="mt-6 max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg sm:leading-8">
-                ResearchAI helps researchers organize papers, extract evidence,
+                Evidara helps researchers organize papers, extract evidence,
                 understand relationships across studies, discover potential research
                 gaps, ask grounded questions, and write with traceable citations.
               </p>
@@ -342,12 +342,12 @@ export function LandingPage() {
         <section id="why-researchai" className="scroll-mt-20 bg-sidebar py-16 text-sidebar-foreground sm:py-24">
           <div className="mx-auto grid max-w-7xl gap-12 px-4 sm:px-6 lg:grid-cols-2 lg:px-8">
             <div className="max-w-xl">
-              <p className="text-sm font-semibold text-sidebar-primary">Why ResearchAI</p>
+              <p className="text-sm font-semibold text-sidebar-primary">Why Evidara</p>
               <h2 className="mt-2 text-3xl font-semibold text-white sm:text-4xl">
                 Not simply “chat with PDFs.”
               </h2>
               <p className="mt-5 leading-7 text-sidebar-foreground/75">
-                ResearchAI builds an evidence layer before producing insights. That
+                Evidara builds an evidence layer before producing insights. That
                 means relationships, potential gaps, drafts, and support assessments
                 remain inspectable instead of becoming disconnected AI output.
               </p>
@@ -461,7 +461,7 @@ export function LandingPage() {
       <footer className="border-t bg-card">
         <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-10 sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8">
           <div className="max-w-md">
-            <ResearchAIMark />
+            <EvidaraMark />
             <p className="mt-3 text-sm text-muted-foreground">
               A provenance-first workspace for evidence-grounded academic research.
             </p>
@@ -470,7 +470,7 @@ export function LandingPage() {
             <a href="#features" className="hover:text-foreground">Features</a>
             <a href="#how-it-works" className="hover:text-foreground">How it works</a>
             <Link to="/sign-in" className="hover:text-foreground">Sign in</Link>
-            <span>© {new Date().getFullYear()} ResearchAI</span>
+            <span>© {new Date().getFullYear()} Evidara</span>
           </div>
         </div>
       </footer>

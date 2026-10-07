@@ -9,6 +9,9 @@ import { Skeleton } from '#/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '#/components/ui/tabs'
 import { PageHeader } from '#/components/page-header'
 import { ChatPanel } from '#/features/chat/ui/chat-panel'
+import { ProjectDiscussionsTab } from '#/features/collaboration/ui/project-discussions-tab'
+import { NotesTab } from '#/features/collaboration/ui/notes-tab'
+import { PresenceAvatars } from '#/features/collaboration/ui/presence-avatars'
 import { EvidenceMatrixTab } from '#/features/evidence-matrix/ui/evidence-matrix-tab'
 import { ResearchGapsTab } from '#/features/research-gaps/ui/research-gaps-tab'
 import { ResearchMapTab } from '#/features/research-map/ui/research-map-tab'
@@ -35,10 +38,12 @@ const PLACEHOLDERS = {
 export function ProjectWorkspace({
   projectId,
   tab,
+  currentUser,
   onTabChange,
 }: {
   projectId: string
   tab: WorkspaceTab
+  currentUser: { id: string; fullName: string }
   onTabChange: (tab: WorkspaceTab) => void
 }) {
   const navigate = useNavigate()
@@ -104,6 +109,10 @@ export function ProjectWorkspace({
         description={project.description ?? undefined}
         actions={
           <>
+            <PresenceAvatars
+              projectId={project.id}
+              currentUser={{ userId: currentUser.id, name: currentUser.fullName }}
+            />
             <span className="self-center text-sm text-muted-foreground">{role === 'OWNER' ? 'Owner' : role === 'EDITOR' ? 'Editor' : 'Viewer'}</span>
             <Button variant="outline" onClick={() => setCollaborationOpen(true)}><Share2 /> <span className="hidden sm:inline">Members</span></Button>
             {isOwner && <Button variant="outline" onClick={() => setRenameOpen(true)}><Pencil /> Edit</Button>}
@@ -139,10 +148,16 @@ export function ProjectWorkspace({
         </TabsList>
 
         <TabsContent value="overview" className="mt-6">
-          <OverviewTab project={project} />
+          <OverviewTab project={project} currentUserId={currentUser.id} />
         </TabsContent>
         <TabsContent value="papers" className="mt-6">
           <PapersTab projectId={project.id} canEdit={canEdit} />
+        </TabsContent>
+        <TabsContent value="discussions" className="mt-6">
+          <ProjectDiscussionsTab projectId={project.id} currentUserId={currentUser.id} role={role ?? null} />
+        </TabsContent>
+        <TabsContent value="notes" className="mt-6">
+          <NotesTab projectId={project.id} role={role ?? null} />
         </TabsContent>
         <TabsContent value="ai-research" className="mt-6">
           <ChatPanel key={project.id} projectId={project.id} />

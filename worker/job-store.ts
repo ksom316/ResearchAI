@@ -90,6 +90,13 @@ export function createSupabaseJobStore(
         p_page_count: Math.max(1, document.pageCount),
         p_sections: rows.sections,
         p_chunks: rows.chunks,
+        p_pages: rows.pages,
+        p_tables: rows.tables,
+        p_facts: rows.facts,
+        p_document_type: document.classification.documentType,
+        p_document_type_confidence: document.classification.confidence,
+        p_document_type_method: document.classification.method,
+        p_extraction_quality: document.extractionQuality,
       })
       if (error) {
         throw new Error(`complete_paper_processing failed: ${explain(error)}`)
@@ -103,6 +110,8 @@ export function createSupabaseJobStore(
         p_started_at: job.startedAt,
         p_error: failure.message,
         p_retry: retry,
+        p_extraction_quality:
+          failure.code === 'no_extractable_text' ? 'no_extractable_text' : null,
       })
       if (error) {
         throw new Error(`fail_paper_processing failed: ${explain(error)}`)

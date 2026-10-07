@@ -4,7 +4,7 @@ import { CreateProjectButton } from '#/features/projects/components/create-proje
 import { ProjectGrid } from '#/features/projects/components/project-grid'
 
 export const Route = createFileRoute('/_authed/projects/')({
-  head: () => ({ meta: [{ title: 'Research Projects · ResearchAI' }] }),
+  head: () => ({ meta: [{ title: 'Research Projects · Evidara' }] }),
   component: ProjectsPage,
 })
 

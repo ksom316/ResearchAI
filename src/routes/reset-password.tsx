@@ -25,6 +25,6 @@ export const Route = createFileRoute('/reset-password')({
     }
     if (!(await getCurrentUser())) throw invalidLink()
   },
-  head: () => ({ meta: [{ title: 'Reset password · ResearchAI' }] }),
+  head: () => ({ meta: [{ title: 'Reset password · Evidara' }] }),
   component: ResetPasswordForm,
 })

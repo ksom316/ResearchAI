@@ -34,5 +34,5 @@ export const Route = createFileRoute('/auth/callback')({
     }
     throw redirect({ href: safeRedirect(search.next) })
   },
-  head: () => ({ meta: [{ title: 'Signing in · ResearchAI' }] }),
+  head: () => ({ meta: [{ title: 'Signing in · Evidara' }] }),
 })

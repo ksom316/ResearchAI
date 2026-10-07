@@ -1,7 +1,7 @@
 {
   "id": "/",
-  "name": "ResearchAI",
-  "short_name": "ResearchAI",
+  "name": "Evidara",
+  "short_name": "Evidara",
   "description": "A provenance-first academic research workspace for grounded search, evidence synthesis, writing, citation checking, and corpus-quality inspection.",
   "start_url": "/dashboard",
   "scope": "/",

@@ -1,8 +1,10 @@
 import {
+  FileEdit,
   FileText,
   GitCompare,
   LayoutList,
   Lightbulb,
+  MessageSquare,
   Network,
   PenLine,
   Quote,
@@ -13,6 +15,8 @@ import {
 export const WORKSPACE_TABS = [
   { value: 'overview', label: 'Overview', icon: LayoutList },
   { value: 'papers', label: 'Papers', icon: FileText },
+  { value: 'discussions', label: 'Discussions', icon: MessageSquare },
+  { value: 'notes', label: 'Notes', icon: FileEdit },
   { value: 'ai-research', label: 'Research Chat', icon: Sparkles },
   { value: 'evidence', label: 'Evidence Matrix', icon: Quote },
   { value: 'research-map', label: 'Research Map', icon: Network },

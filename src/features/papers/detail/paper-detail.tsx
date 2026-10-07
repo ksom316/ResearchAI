@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '#/components/ui/card'
 import { Skeleton } from '#/components/ui/skeleton'
 import { projectsQuery } from '#/features/projects/queries'
 import { formatBytes, formatDate } from '#/lib/format'
+import { DiscussionsPanel } from '#/features/collaboration/ui/discussions-panel'
 import { DeletePaperDialog } from '../components/delete-paper-dialog'
 import { paperQuery, useOpenPaper } from '../queries'
 import { STATUS_INFO } from '../status'
@@ -27,7 +28,13 @@ const back = (
   </Link>
 )
 
-export function PaperDetail({ paperId }: { paperId: string }) {
+export function PaperDetail({
+  paperId,
+  currentUserId,
+}: {
+  paperId: string
+  currentUserId: string
+}) {
   const {
     data: paper,
     error,
@@ -75,10 +82,16 @@ export function PaperDetail({ paperId }: { paperId: string }) {
     )
   }
 
-  return <PaperDetailContent paper={paper} />
+  return <PaperDetailContent paper={paper} currentUserId={currentUserId} />
 }
 
-function PaperDetailContent({ paper }: { paper: Paper }) {
+function PaperDetailContent({
+  paper,
+  currentUserId,
+}: {
+  paper: Paper
+  currentUserId: string
+}) {
   const navigate = useNavigate()
   const open = useOpenPaper()
   const [deleting, setDeleting] = useState<Paper | null>(null)
@@ -120,6 +133,11 @@ function PaperDetailContent({ paper }: { paper: Paper }) {
           <PaperStatusCard paper={paper} />
           <CitationMetadataCard paper={paper} />
           {paper.status === 'ready' && <PaperOutline paperId={paper.id} />}
+          <DiscussionsPanel
+            paperId={paper.id}
+            projectIds={paper.project_ids}
+            currentUserId={currentUserId}
+          />
         </div>
         <PaperDetails paper={paper} />
       </div>

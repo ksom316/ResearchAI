@@ -101,7 +101,7 @@ export function AcademicWriterTab({ projectId }: { projectId: string }) {
         <CardHeader>
           <CardTitle>Configure draft</CardTitle>
           <CardDescription>
-            ResearchAI will abstain when the available project evidence is insufficient.
+            Evidara will abstain when the available project evidence is insufficient.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">

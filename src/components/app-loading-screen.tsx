@@ -4,7 +4,7 @@ export function AppLoadingScreen() {
       className="fixed inset-0 z-50 flex min-h-svh items-center justify-center overflow-hidden bg-background px-6"
       role="status"
       aria-live="polite"
-      aria-label="ResearchAI is loading"
+      aria-label="Evidara is loading"
     >
       <div className="flex flex-col items-center text-center">
         <div className="relative flex size-28 items-center justify-center" aria-hidden="true">
@@ -20,7 +20,7 @@ export function AppLoadingScreen() {
 
           <span className="relative flex size-16 items-center justify-center rounded-2xl border bg-card shadow-lg shadow-primary/10 motion-safe:animate-pulse motion-reduce:animate-none">
             <img
-              src="/researchai-icon.png"
+              src="/evidara-icon.png"
               alt=""
               width={48}
               height={48}
@@ -29,7 +29,7 @@ export function AppLoadingScreen() {
           </span>
         </div>
 
-        <p className="font-heading mt-5 text-2xl font-semibold">ResearchAI</p>
+        <p className="font-heading mt-5 text-2xl font-semibold">Evidara</p>
         <p className="mt-2 text-sm text-muted-foreground">
           Turning papers into evidence.
         </p>

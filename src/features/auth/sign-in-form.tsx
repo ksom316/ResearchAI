@@ -68,7 +68,7 @@ export function SignInForm({
       description="Sign in to your research workspace."
       footer={
         <>
-          New to ResearchAI?{' '}
+          New to Evidara?{' '}
           <Link to="/sign-up" className="font-medium text-primary underline">
             Create an account
           </Link>

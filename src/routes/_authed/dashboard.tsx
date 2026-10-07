@@ -7,7 +7,7 @@ import { PaperList } from '#/features/papers/components/paper-list'
 import { CreateProjectButton } from '#/features/projects/components/create-project-button'
 
 export const Route = createFileRoute('/_authed/dashboard')({
-  head: () => ({ meta: [{ title: 'Dashboard · ResearchAI' }] }),
+  head: () => ({ meta: [{ title: 'Dashboard · Evidara' }] }),
   component: DashboardPage,
 })
 

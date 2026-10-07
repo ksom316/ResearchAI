@@ -53,6 +53,12 @@ describe('itemsToText', () => {
     expect(itemsToText([item('', 0, 0), item('   ', 0, 0)])).toBe('')
   })
 
+  it('joins a wide gap with a tab instead of a space (candidate table column)', () => {
+    expect(
+      itemsToText([item('Revenue', 0, 100), item('12.4M', 200, 100)]),
+    ).toBe('Revenue\t12.4M')
+  })
+
   it('keeps stream order rather than sorting by position', () => {
     // A second column written after the first stays after it.
     expect(

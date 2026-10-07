@@ -6,6 +6,6 @@ export const Route = createFileRoute('/sign-up')({
   beforeLoad: async () => {
     if (await getCurrentUser()) throw redirect({ to: '/dashboard' })
   },
-  head: () => ({ meta: [{ title: 'Create account · ResearchAI' }] }),
+  head: () => ({ meta: [{ title: 'Create account · Evidara' }] }),
   component: SignUpForm,
 })

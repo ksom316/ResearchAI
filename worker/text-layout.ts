@@ -23,6 +23,16 @@ const LINE_TOLERANCE = 0.5
 const PARAGRAPH_GAP = 1.9
 /** Horizontal gap (in font heights) above which two items on a line get a space. */
 const WORD_GAP = 0.15
+/**
+ * Horizontal gap (in font heights) above which two items on a line are joined
+ * with a tab instead of a space. Ordinary word spacing never reaches this; it
+ * only fires for the wide gaps that separate columns in tabular layouts, so a
+ * downstream table detector can find candidate rows without re-parsing item
+ * positions. normalizeText() collapses tabs back to a single space for prose,
+ * so this is invisible everywhere except the raw per-page text a table
+ * detector reads before normalization.
+ */
+const COLUMN_GAP = 4
 
 type Line = {
   text: string
@@ -67,11 +77,14 @@ export function itemsToText(items: readonly LayoutItem[]): string {
       }
     } else if (current) {
       const gap = x - current.endX
+      const isColumnGap = gap > COLUMN_GAP * height
       const needsSpace =
+        !isColumnGap &&
         gap > WORD_GAP * height &&
         !current.text.endsWith(' ') &&
         !item.str.startsWith(' ')
-      current.text += (needsSpace ? ' ' : '') + item.str
+      const separator = isColumnGap ? '\t' : needsSpace ? ' ' : ''
+      current.text += separator + item.str
       current.endX = x + item.width
     }
     forceBreak = item.hasEOL === true

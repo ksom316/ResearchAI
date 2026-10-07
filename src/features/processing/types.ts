@@ -88,10 +88,102 @@ export type ProcessingOptions = {
   chunk: ChunkOptions
 }
 
+/**
+ * Document type, used to steer specialized downstream understanding (R12).
+ * Deterministic, keyword-based signals only for now; 'unknown' is the honest
+ * default when no signal is strong enough. See classifier.ts.
+ */
+export type DocumentType =
+  | 'academic'
+  | 'financial'
+  | 'annual_report'
+  | 'government'
+  | 'policy'
+  | 'technical'
+  | 'market_research'
+  | 'thesis'
+  | 'case_study'
+  | 'survey'
+  | 'general_report'
+  | 'unknown'
+
+export type DocumentTypeMethod = 'deterministic' | 'llm'
+
+export type DocumentClassification = {
+  documentType: DocumentType
+  confidence: number
+  method: DocumentTypeMethod
+}
+
+/**
+ * How much the extracted text for this document can be trusted downstream.
+ * Mirrors papers.extraction_quality (R12). 'no_extractable_text' is a hard
+ * failure elsewhere (ProcessingError), so it never appears here; it is listed
+ * for completeness with the database check constraint.
+ */
+export type ExtractionQuality =
+  | 'successful'
+  | 'partial'
+  | 'poor'
+  | 'no_extractable_text'
+  | 'ocr_required'
+
+/** Deterministic per-page signal used for extraction quality and OCR routing. */
+export type PageProfile = {
+  pageNumber: number
+  charCount: number
+  /** True when this page's digital text is too sparse to trust (candidate for OCR). */
+  likelyScanned: boolean
+}
+
+/**
+ * A detected table, kept as a header + row grid rather than flattened prose
+ * (R12 table intelligence). Cell values are the exact extracted strings: no
+ * numeric coercion here, so provenance always matches what is on the page.
+ */
+export type DetectedTable = {
+  /** 0-based order among tables in the document. */
+  tableIndex: number
+  pageStart: number
+  pageEnd: number
+  /** Nearest heading-like line above the table, if any. */
+  caption: string | null
+  headers: string[]
+  rows: string[][]
+  /** 0-1 heuristic confidence from column-count consistency across rows. */
+  confidence: number
+}
+
+/**
+ * A structured fact pulled from prose or a table cell (R12 structured facts /
+ * financial understanding). Intentionally narrow: a labeled metric with a
+ * value, not a general-purpose accounting model.
+ */
+export type DetectedFact = {
+  metric: string
+  /** Raw numeric value as written (already unit-stripped); null if unparsable. */
+  value: number | null
+  unit: string | null
+  currency: string | null
+  /** Fiscal/calendar period as written, e.g. "FY2025", "2024", "Q3 2025". */
+  period: string | null
+  /** The exact text the fact was read from, for human verification. */
+  rawText: string
+  pageNumber: number | null
+  /** Index into ProcessedDocument.tables when the fact came from a table cell. */
+  tableIndex: number | null
+  confidence: number
+}
+
 export type ProcessedDocument = {
   pageCount: number
   sections: DocumentSection[]
   chunks: DocumentChunk[]
+  pages: PageProfile[]
+  extractionQuality: ExtractionQuality
+  classification: DocumentClassification
+  tables: DetectedTable[]
+  facts: DetectedFact[]
 }
 
 export type ProcessingErrorCode =

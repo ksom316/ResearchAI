@@ -25,7 +25,7 @@ function InvitePage() {
   }
   return <main className="mx-auto flex min-h-[60vh] max-w-lg items-center justify-center">
     <Card className="w-full"><CardHeader><CardTitle>Project invitation</CardTitle></CardHeader><CardContent className="space-y-4">
-      <p className="text-sm text-muted-foreground">Accept this invitation to add the shared project to your ResearchAI workspace.</p>
+      <p className="text-sm text-muted-foreground">Accept this invitation to add the shared project to your Evidara workspace.</p>
       {message && <p className={state === 'error' ? 'text-sm text-destructive' : 'text-sm'}>{message}</p>}
       {state === 'done' ? <Button onClick={() => void navigate({ to: '/projects' })}>Open projects</Button> : <Button disabled={!token || state === 'working'} onClick={() => void accept()}>{state === 'working' ? 'Accepting…' : 'Accept invitation'}</Button>}
     </CardContent></Card>

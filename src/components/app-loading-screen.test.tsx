@@ -5,13 +5,13 @@ import { describe, expect, it } from 'vitest'
 import { AppLoadingScreen } from './app-loading-screen'
 
 describe('AppLoadingScreen', () => {
-  it('renders accessible ResearchAI loading branding without layout overflow', () => {
+  it('renders accessible Evidara loading branding without layout overflow', () => {
     const output = renderToStaticMarkup(createElement(AppLoadingScreen))
 
     expect(output).toContain('role="status"')
-    expect(output).toContain('aria-label="ResearchAI is loading"')
-    expect(output).toContain('src="/researchai-icon.png"')
-    expect(output).toContain('>ResearchAI<')
+    expect(output).toContain('aria-label="Evidara is loading"')
+    expect(output).toContain('src="/evidara-icon.png"')
+    expect(output).toContain('>Evidara<')
     expect(output).toContain('Turning papers into evidence.')
     expect(output).toContain('overflow-hidden')
   })

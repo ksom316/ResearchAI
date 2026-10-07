@@ -1,6 +1,40 @@
 import { FAILURE_MESSAGES } from '#/features/processing/errors'
 import type { ProcessingErrorCode } from '#/features/processing/types'
-import type { PaperStatus } from './types'
+import type { DocumentType, ExtractionQuality, PaperStatus } from './types'
+
+/** R12: short, human labels for the deterministic document classification. */
+export const DOCUMENT_TYPE_LABELS: Record<DocumentType, string> = {
+  academic: 'Academic paper',
+  financial: 'Financial report',
+  annual_report: 'Annual report',
+  government: 'Government document',
+  policy: 'Policy document',
+  technical: 'Technical report',
+  market_research: 'Market research',
+  thesis: 'Thesis / dissertation',
+  case_study: 'Case study',
+  survey: 'Survey report',
+  general_report: 'General report',
+  unknown: 'Unclassified',
+}
+
+/** R12: how much the extracted text should be trusted, shown so quality is never hidden. */
+export const EXTRACTION_QUALITY_INFO: Record<
+  ExtractionQuality,
+  { label: string; tone: 'good' | 'caution' | 'bad' }
+> = {
+  successful: { label: 'Text extraction: good', tone: 'good' },
+  partial: {
+    label: 'Text extraction: partial (some pages may be scanned)',
+    tone: 'caution',
+  },
+  ocr_required: {
+    label: 'Text extraction: mostly scanned - OCR would help',
+    tone: 'caution',
+  },
+  poor: { label: 'Text extraction: poor - verify findings against the PDF', tone: 'bad' },
+  no_extractable_text: { label: 'Text extraction: none (scanned document)', tone: 'bad' },
+}
 
 /** Short badge label, and the sentence describing what the status means. */
 export const STATUS_INFO: Record<

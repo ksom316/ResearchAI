@@ -23,7 +23,7 @@ interface MyRouterContext {
 const SITE_DESCRIPTION =
   'A provenance-first academic research workspace for grounded search, evidence synthesis, writing, citation checking, and corpus-quality inspection.'
 const SITE_URL = 'https://research-ai-pearl-omega.vercel.app'
-const ICON_PATH = '/researchai-icon.png'
+const ICON_PATH = '/evidara-icon.png'
 const ICON_URL = `${SITE_URL}${ICON_PATH}`
 
 export const Route = createRootRouteWithContext<MyRouterContext>()({
@@ -31,13 +31,13 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
     meta: [
       { charSet: 'utf-8' },
       { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-      { title: 'ResearchAI' },
+      { title: 'Evidara' },
       { name: 'description', content: SITE_DESCRIPTION },
-      { name: 'application-name', content: 'ResearchAI' },
+      { name: 'application-name', content: 'Evidara' },
       { name: 'theme-color', content: '#ffffff' },
       { property: 'og:type', content: 'website' },
-      { property: 'og:site_name', content: 'ResearchAI' },
-      { property: 'og:title', content: 'ResearchAI' },
+      { property: 'og:site_name', content: 'Evidara' },
+      { property: 'og:title', content: 'Evidara' },
       { property: 'og:description', content: SITE_DESCRIPTION },
       { property: 'og:url', content: SITE_URL },
       { property: 'og:image', content: ICON_URL },
@@ -45,13 +45,13 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
       { property: 'og:image:type', content: 'image/png' },
       {
         property: 'og:image:alt',
-        content: 'ResearchAI application icon',
+        content: 'Evidara application icon',
       },
       { name: 'twitter:card', content: 'summary' },
-      { name: 'twitter:title', content: 'ResearchAI' },
+      { name: 'twitter:title', content: 'Evidara' },
       { name: 'twitter:description', content: SITE_DESCRIPTION },
       { name: 'twitter:image', content: ICON_URL },
-      { name: 'twitter:image:alt', content: 'ResearchAI application icon' },
+      { name: 'twitter:image:alt', content: 'Evidara application icon' },
     ],
     links: [
       { rel: 'stylesheet', href: appCss },

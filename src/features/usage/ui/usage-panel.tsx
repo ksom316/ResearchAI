@@ -216,7 +216,7 @@ export function UsageSummaryView({ usage }: { usage: UsageSummary }) {
           <CardHeader>
             <CardTitle>AI usage by feature</CardTitle>
             <CardDescription>
-              Requests made across ResearchAI tools.
+              Requests made across Evidara tools.
             </CardDescription>
           </CardHeader>
           <CardContent>

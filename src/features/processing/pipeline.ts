@@ -1,12 +1,16 @@
 import { chunkSections, DEFAULT_CHUNK_OPTIONS } from './chunker'
+import { classifyDocument } from './classifier'
 import {
   FAILURE_MESSAGES,
   ProcessingError,
   toProcessingFailure,
 } from './errors'
 import type { PdfExtractor } from './extractor'
+import { extractFactsFromTables, extractFactsFromText } from './fact-extractor'
 import { normalizeDocument } from './normalize'
+import { computeExtractionQuality, profilePages } from './profiler'
 import { detectSections } from './section-detector'
+import { detectTables } from './table-detector'
 import type {
   ExtractedDocument,
   ProcessedDocument,
@@ -41,7 +45,28 @@ export function processExtractedDocument(
   }
   const sections = detectSections(normalized)
   const chunks = chunkSections(normalized, sections, options.chunk)
-  return { pageCount: normalized.pageCount, sections, chunks }
+
+  // R12: deterministic document intelligence. All of this is cheap (no AI
+  // calls), so it runs for every paper regardless of document type.
+  const pages = profilePages(extracted)
+  const extractionQuality = computeExtractionQuality(pages)
+  const classification = classifyDocument(normalized.text, sections)
+  const tables = detectTables(extracted)
+  const facts = [
+    ...extractFactsFromText(normalized),
+    ...extractFactsFromTables(tables),
+  ]
+
+  return {
+    pageCount: normalized.pageCount,
+    sections,
+    chunks,
+    pages,
+    extractionQuality,
+    classification,
+    tables,
+    facts,
+  }
 }
 
 /**

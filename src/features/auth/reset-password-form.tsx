@@ -66,7 +66,7 @@ export function ResetPasswordForm() {
           <p>Your password has been changed successfully.</p>
         </div>
         <Button asChild className="w-full">
-          <Link to="/dashboard">Continue to ResearchAI</Link>
+          <Link to="/dashboard">Continue to Evidara</Link>
         </Button>
       </AuthCard>
     )

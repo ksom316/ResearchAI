@@ -8,7 +8,7 @@ vi.mock('@tanstack/react-router', async () => ({
   Link: (await import('#/test/router-link-mock')).RouterLinkMock,
 }))
 
-describe('ResearchAI public landing page', () => {
+describe('Evidara public landing page', () => {
   const render = () => renderToStaticMarkup(createElement(LandingPage))
 
   it('renders the product promise and every implemented feature', () => {
@@ -50,7 +50,7 @@ describe('ResearchAI public landing page', () => {
     expect(output).toContain('id="how-it-works"')
     expect(output).toContain('id="why-researchai"')
     expect(output).toContain('overflow-x-clip')
-    expect(output).toContain('src="/researchai-icon.png"')
+    expect(output).toContain('src="/evidara-icon.png"')
   })
 })
 

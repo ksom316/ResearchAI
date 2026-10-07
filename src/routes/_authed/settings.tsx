@@ -10,7 +10,7 @@ import {
 import { UsagePanel } from '#/features/usage/ui/usage-panel'
 
 export const Route = createFileRoute('/_authed/settings')({
-  head: () => ({ meta: [{ title: 'Settings · ResearchAI' }] }),
+  head: () => ({ meta: [{ title: 'Settings · Evidara' }] }),
   component: SettingsPage,
 })
 

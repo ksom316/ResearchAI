@@ -8,9 +8,16 @@ import {
 } from '#/components/ui/card'
 import { formatDate } from '#/lib/format'
 import { papersQuery } from '#/features/papers/queries'
+import { AssignmentsList } from '#/features/collaboration/ui/assignments-list'
 import type { ResearchProject } from '../types'
 
-export function OverviewTab({ project }: { project: ResearchProject }) {
+export function OverviewTab({
+  project,
+  currentUserId,
+}: {
+  project: ResearchProject
+  currentUserId: string
+}) {
   const papers = useQuery(papersQuery({ projectId: project.id }))
 
   return (
@@ -39,6 +46,9 @@ export function OverviewTab({ project }: { project: ResearchProject }) {
           </dl>
         </CardContent>
       </Card>
+      <div className="lg:col-span-3">
+        <AssignmentsList projectId={project.id} currentUserId={currentUserId} />
+      </div>
     </div>
   )
 }

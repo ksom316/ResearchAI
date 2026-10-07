@@ -27,7 +27,7 @@ export function AuthCard({
           </p>
         </div>
         <p className="text-sm text-sidebar-foreground/60">
-          © {new Date().getFullYear()} ResearchAI
+          © {new Date().getFullYear()} Evidara
         </p>
       </aside>
       <section className="flex items-center justify-center px-4 py-10">

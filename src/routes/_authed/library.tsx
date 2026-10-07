@@ -5,7 +5,7 @@ import { PaperList } from '#/features/papers/components/paper-list'
 import { UploadDropzone } from '#/features/papers/components/upload-dropzone'
 
 export const Route = createFileRoute('/_authed/library')({
-  head: () => ({ meta: [{ title: 'Library · ResearchAI' }] }),
+  head: () => ({ meta: [{ title: 'Library · Evidara' }] }),
   component: LibraryPage,
 })
 

@@ -4,11 +4,11 @@ import { describe, expect, it } from 'vitest'
 import { Brand } from './brand'
 
 describe('Brand', () => {
-  it('renders the canonical ResearchAI icon without cropping', () => {
+  it('renders the canonical Evidara icon without cropping', () => {
     const output = renderToStaticMarkup(createElement(Brand))
 
-    expect(output).toContain('src="/researchai-icon.png"')
+    expect(output).toContain('src="/evidara-icon.png"')
     expect(output).toContain('object-contain')
-    expect(output).toContain('>ResearchAI<')
+    expect(output).toContain('>Evidara<')
   })
 })

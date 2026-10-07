@@ -1,5 +1,6 @@
 import { Link, useRouterState } from '@tanstack/react-router'
 import { Brand } from '#/components/brand'
+import { NotificationBell } from '#/features/collaboration/ui/notification-bell'
 import { UserMenu } from './user-menu'
 import { NAV_ITEMS, isUnderPrefix } from './nav-items'
 import { cn } from '#/lib/utils'
@@ -19,8 +20,9 @@ export function SidebarNav({
 
   return (
     <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground">
-      <div className="px-5 py-5">
+      <div className="flex items-center justify-between px-5 py-5">
         <Brand tone="light" />
+        <NotificationBell userId={user.id} tone="light" />
       </div>
       <nav className="flex-1 space-y-1 px-3" aria-label="Main">
         {NAV_ITEMS.map(({ to, label, icon: Icon, alsoActiveFor }) => {

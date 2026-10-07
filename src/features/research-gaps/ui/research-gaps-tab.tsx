@@ -130,7 +130,7 @@ export function ResearchGapsTab({ projectId }: { projectId: string }) {
             <EmptyState
               icon={Lightbulb}
               title="No grounded potential gaps found in this corpus yet"
-              description="ResearchAI only surfaces potential gaps or opportunities supported by multiple directly related papers. It abstains when the available evidence is insufficient."
+              description="Evidara only surfaces potential gaps or opportunities supported by multiple directly related papers. It abstains when the available evidence is insufficient."
             />
           </div>
         )

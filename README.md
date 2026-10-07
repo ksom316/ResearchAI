@@ -1,8 +1,8 @@
-# ResearchAI
+# Evidara
 
-ResearchAI is a provenance-first academic research workspace. It turns a private project corpus into searchable evidence, structured cross-paper intelligence, grounded drafts, inspectable citations, and deterministic quality observations.
+Evidara is a provenance-first academic research workspace. It turns a private project corpus into searchable evidence, structured cross-paper intelligence, grounded drafts, inspectable citations, and deterministic quality observations.
 
-The core design constraint is simple: claims produced or derived by the application must remain traceable to authorized evidence. ResearchAI abstains when that evidence is unavailable or insufficient; it is not an unrestricted essay generator or a universal fact checker.
+The core design constraint is simple: claims produced or derived by the application must remain traceable to authorized evidence. Evidara abstains when that evidence is unavailable or insufficient; it is not an unrestricted essay generator or a universal fact checker.
 
 ## Core workflow
 
@@ -180,7 +180,7 @@ the next UTC monthly boundary. No scheduled reset job is required.
 - Writer drafts and Claim Checker assessments are ephemeral and are not autosaved.
 - Claim Checker assesses only the supplied cited evidence; it is not a web-enabled fact checker.
 - Research Gap Explorer is deliberately conservative and corpus-relative.
-- Bibliographic metadata may require manual completion; ResearchAI does not fabricate missing fields or perform external metadata lookup.
+- Bibliographic metadata may require manual completion; Evidara does not fabricate missing fields or perform external metadata lookup.
 - `openrouter/free` routing can be intermittently unavailable; failures are surfaced safely without automatic model fallback.
 - Background processing depends on the two persistent worker services being healthy.
 - The Comparisons workspace remains a placeholder; comparison writing is available through Academic Writer.
@@ -206,4 +206,4 @@ supabase/migrations/   Ordered schema, RLS, job, vector, and citation migrations
 supabase/verification/ SQL verification scripts
 ```
 
-ResearchAI supports research judgment with transparent, corpus-grounded evidence. It does not replace reading the source papers.
+Evidara supports research judgment with transparent, corpus-grounded evidence. It does not replace reading the source papers.
