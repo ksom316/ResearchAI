@@ -30,9 +30,25 @@ export async function getProject(id: string): Promise<ResearchProject | null> {
 export async function createProject(
   input: ProjectInput,
 ): Promise<ResearchProject> {
-  const { data, error } = await getSupabaseBrowserClient()
+  const supabase = getSupabaseBrowserClient()
+
+  // research_projects.user_id defaults to auth.uid() in the database, but
+  // every other insert in this app (see uploadPaper in papers/api.ts)
+  // resolves the authenticated user explicitly and sends user_id rather than
+  // relying on that default - this was the one insert that didn't, and it is
+  // the one that failed its own "user_id = auth.uid()" RLS check in
+  // production. Matching the established, working pattern removes any
+  // dependency on the column default being evaluated the same way the
+  // policy check is for this request.
+  const { data: userData, error: userError } = await supabase.auth.getUser()
+  if (userError || !userData.user) {
+    throw new Error('Your session has expired. Please sign in again.')
+  }
+
+  const { data, error } = await supabase
     .from('research_projects')
     .insert({
+      user_id: userData.user.id,
       title: input.title.trim(),
       description: input.description?.trim() || null,
     })
